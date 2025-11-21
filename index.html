@@ -85,6 +85,33 @@
         }
         @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+        /* 購入可能時の強調 */
+        .can-buy {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+            background-color: #1e293b !important; /* bg-slate-800 */
+        }
+        .can-buy:hover {
+            background-color: #334155 !important; /* bg-slate-700 */
+        }
+
+        /* 通知バッジ */
+        .nav-badge {
+            position: absolute;
+            top: 4px;
+            right: 25%;
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            border: 2px solid #1e293b;
+            display: none; /* JSで制御 */
+        }
+        .nav-badge.active {
+            display: block;
+            animation: bounce 1s infinite;
+        }
+
         /* スクロールバー */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
@@ -141,42 +168,51 @@
             </div>
         </div>
 
-        <!-- TAB 2: バトル (戦闘) -->
-        <div id="tab-battle" class="tab-content absolute inset-0 hidden flex-col p-4 items-center">
-            <div class="w-full max-w-md flex-1 flex flex-col items-center justify-center">
-                
+        <!-- TAB 2: バトル (戦闘 & 武器) -->
+        <div id="tab-battle" class="tab-content absolute inset-0 hidden flex-col overflow-hidden">
+            <!-- 上半分: 戦闘画面 (固定) -->
+            <div class="h-1/2 flex flex-col items-center justify-center p-4 bg-slate-900 border-b border-slate-700 shrink-0 relative">
                 <!-- ステージ情報 -->
-                <div class="text-center mb-4">
-                    <div class="text-yellow-500 font-bold tracking-widest">STAGE <span id="battle-stage">1</span></div>
-                    <div class="text-xs text-slate-400">敵を倒して魔石(Gem)を集めよう！</div>
+                <div class="text-center mb-2 absolute top-2">
+                    <div class="text-yellow-500 font-bold tracking-widest text-sm">STAGE <span id="battle-stage">1</span></div>
                 </div>
 
-                <!-- HPバー -->
-                <div class="w-full bg-slate-700 h-6 rounded-full overflow-hidden border border-slate-600 mb-8 relative">
-                    <div id="enemy-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-200" style="width: 100%"></div>
-                    <div class="absolute inset-0 flex items-center justify-center text-xs font-bold shadow-black drop-shadow-md">
-                        HP: <span id="enemy-hp-text">100/100</span>
-                    </div>
-                </div>
-
-                <!-- 敵画像 (CSS生成) -->
-                <div id="enemy-container" class="relative cursor-crosshair active:scale-95 transition-transform">
-                    <div id="enemy-visual" class="w-40 h-40 bg-slate-800 rounded-xl flex items-center justify-center text-6xl shadow-2xl border-2 border-red-900/50">
+                <!-- 敵画像 -->
+                <div id="enemy-container" class="relative cursor-crosshair active:scale-95 transition-transform mt-4">
+                    <div id="enemy-visual" class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center text-6xl shadow-2xl border-2 border-red-900/50">
                         👾
                     </div>
                 </div>
 
-                <div class="mt-8 text-center space-y-2">
-                    <div class="text-sm font-bold text-slate-300">Party DPS: <span id="battle-dps" class="text-red-400">0</span></div>
-                    <div class="text-xs text-slate-500">画面タップで攻撃！</div>
+                <!-- HPバー -->
+                <div class="w-64 bg-slate-700 h-4 rounded-full overflow-hidden border border-slate-600 mt-4 relative">
+                    <div id="enemy-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-200" style="width: 100%"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold shadow-black drop-shadow-md">
+                        HP: <span id="enemy-hp-text">100/100</span>
+                    </div>
+                </div>
+
+                <div class="mt-2 text-center space-y-1">
+                    <div class="text-xs font-bold text-slate-300">Party DPS: <span id="battle-dps" class="text-red-400">0</span></div>
                 </div>
                 
                 <!-- オート進行トグル -->
-                <div class="mt-4">
+                <div class="absolute bottom-2 right-4">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="auto-battle-check" class="w-4 h-4 rounded bg-slate-700 border-slate-600 text-blue-600 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2">
-                        <span class="text-sm text-slate-300 select-none">ボス戦後に次へ進む</span>
+                        <input type="checkbox" id="auto-battle-check" class="w-3 h-3 rounded bg-slate-700 border-slate-600 text-blue-600 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2">
+                        <span class="text-xs text-slate-400 select-none">Auto Next</span>
                     </label>
+                </div>
+            </div>
+
+            <!-- 下半分: 武器強化 (スクロール) -->
+            <div class="h-1/2 flex flex-col bg-slate-800">
+                <div class="p-2 bg-slate-800 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center">
+                    <span>⚔️ Weapons (魔石で強化)</span>
+                    <span class="text-[10px] text-slate-500">攻撃力UP</span>
+                </div>
+                <div id="weapon-list" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                    <!-- JSで生成 -->
                 </div>
             </div>
         </div>
@@ -195,8 +231,8 @@
                     <h3 class="text-xl font-bold text-white mb-2">スライム召喚</h3>
                     <p class="text-xs text-slate-400 mb-4">N:60% R:30% SR:9% SSR:1%</p>
                     
-                    <button onclick="pullGacha(1)" id="btn-gacha-1" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded shadow-lg transition-all mb-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        1回召喚 (<span id="gacha-cost">100</span> Slimes)
+                    <button onclick="pullGacha(1)" id="btn-gacha-1" class="w-full py-3 bg-slate-700 text-slate-400 font-bold rounded shadow-lg transition-all mb-2 border border-slate-600">
+                        <span id="gacha-btn-text">ロード中...</span>
                     </button>
                     <div class="text-[10px] text-slate-500 mt-2">※既に持っているキャラは魔石(Gem)に変換されます</div>
                 </div>
@@ -234,7 +270,7 @@
                     <h3 class="font-bold text-red-400 mb-2">Rebirth (転生)</h3>
                     <p class="text-xs text-red-200/70 mb-4">
                         スライム、施設、ステージ進行をリセットし、獲得総スライムに応じた「永続倍率」を得て最初から始めます。<br>
-                        ※仲間と魔石、Gachaコストは引き継がれます。
+                        ※仲間、魔石、武器レベルは引き継がれます。
                     </p>
                     <div class="text-center mb-2">
                         <span class="text-xs text-slate-400">現在の獲得ボーナス: </span>
@@ -255,21 +291,24 @@
 
     <!-- フッターナビゲーション (タブボタン) -->
     <nav class="bg-slate-800 border-t border-slate-700 h-16 shrink-0 flex justify-around items-center z-50">
-        <button onclick="switchTab('main')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-blue-400 active:bg-slate-700">
+        <button onclick="switchTab('main')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-blue-400 active:bg-slate-700 relative">
             <span class="text-xl">🏠</span>
             <span class="text-[10px] font-bold mt-1">メイン</span>
         </button>
-        <button onclick="switchTab('battle')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+        <button onclick="switchTab('battle')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700 relative">
             <span class="text-xl">⚔️</span>
             <span class="text-[10px] font-bold mt-1">戦闘</span>
+            <div id="badge-battle" class="nav-badge"></div>
         </button>
-        <button onclick="switchTab('gacha')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+        <button onclick="switchTab('gacha')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700 relative">
             <span class="text-xl">🔮</span>
             <span class="text-[10px] font-bold mt-1">ガチャ</span>
+            <div id="badge-gacha" class="nav-badge"></div>
         </button>
-        <button onclick="switchTab('shop')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+        <button onclick="switchTab('shop')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700 relative">
             <span class="text-xl">🛒</span>
             <span class="text-[10px] font-bold mt-1">ショップ</span>
+            <div id="badge-shop" class="nav-badge"></div>
         </button>
     </nav>
 
@@ -305,12 +344,27 @@
             { id: 'u6', name: 'ドラゴン・スライム', rarity: 'SSR', icon: '🐉', chance: 1, baseDps: 300, baseClick: 100, desc: '最強の生物...かも' }
         ];
 
+        // 武器定義
+        const WEAPONS = [
+            { id: 'w_wood', name: '木の剣', icon: '🗡️', baseCost: 5, basePower: 2, desc: '練習用の剣。' },
+            { id: 'w_iron', name: '鉄の剣', icon: '⚔️', baseCost: 50, basePower: 15, desc: '一般的だが頼りになる。' },
+            { id: 'w_silver', name: '白銀のレイピア', icon: '🤺', baseCost: 300, basePower: 80, desc: '美しく鋭い一振り。' },
+            { id: 'w_hero', name: '勇者の剣', icon: '✨', baseCost: 2000, basePower: 500, desc: '伝説の勇者が使っていた剣。' },
+            { id: 'w_demon', name: '魔剣グラム', icon: '👿', baseCost: 10000, basePower: 3000, desc: '呪われているが強力無比。' }
+        ];
+
         const CONSUMABLES = [
             {
                 id: 'redPotion', name: '赤のポーション', icon: '🧪', baseCost: 1000,
                 desc: '30秒間、生産3倍 (CD:60s)',
                 duration: 30, cooldown: 60,
                 onBuy: () => addBuff('frenzy', 30, 3)
+            },
+            {
+                id: 'strPotion', name: '力のポーション', icon: '💪', baseCost: 5000,
+                desc: '60秒間、戦闘力2倍 (CD:120s)',
+                duration: 60, cooldown: 120,
+                onBuy: () => addBuff('strength', 60, 2)
             },
             {
                 id: 'goldPotion', name: '黄のポーション', icon: '✨', baseCost: 10000,
@@ -327,10 +381,11 @@
         /* --- ゲーム状態 --- */
         let game = {
             slimes: 0,
-            totalSlimes: 0, // 生涯獲得量（転生計算用）
+            totalSlimes: 0,
             gems: 0,
             buildings: {},
             units: {}, // { u1: { level: 1, count: 1 } }
+            weapons: {}, // { w_wood: 1 } Lv
             gachaCount: 0,
             rebirthCount: 0,
             battleStage: 1,
@@ -339,6 +394,7 @@
 
         // 初期化ヘルパー
         BUILDINGS.forEach(b => { if(game.buildings[b.id] === undefined) game.buildings[b.id] = 0; });
+        WEAPONS.forEach(w => { if(game.weapons[w.id] === undefined) game.weapons[w.id] = 0; });
 
         // 一時状態
         let lastTick = performance.now();
@@ -360,32 +416,31 @@
             enemyHpBar: $('enemy-hp-bar'), enemyHpText: $('enemy-hp-text'),
             enemyVisual: $('enemy-visual'), battleStage: $('battle-stage'),
             battleDps: $('battle-dps'),
-            gachaCost: $('gacha-cost'), unitList: $('unit-list'),
+            gachaCost: $('gacha-cost'), unitList: $('unit-list'), weaponList: $('weapon-list'),
             shopBuildings: $('shop-buildings'), shopConsumables: $('shop-consumables'),
-            rebirthPreview: $('rebirth-preview'), statRebirth: $('stat-rebirth'), statClick: $('stat-click')
+            rebirthPreview: $('rebirth-preview'), statRebirth: $('stat-rebirth'), statClick: $('stat-click'),
+            badgeGacha: $('badge-gacha'), badgeShop: $('badge-shop'), badgeBattle: $('badge-battle')
         };
 
         /* --- コアロジック --- */
         
         function init() {
             loadGame();
-            // 初回ユニットデータ整合性チェック
-            UNITS.forEach(u => {
-                if (!game.units[u.id]) game.units[u.id] = { level: 0, count: 0 };
-            });
+            // データ整合性
+            UNITS.forEach(u => { if (!game.units[u.id]) game.units[u.id] = { level: 0, count: 0 }; });
+            WEAPONS.forEach(w => { if (!game.weapons[w.id]) game.weapons[w.id] = 0; });
             
             resetBattle(game.battleStage);
             renderShop();
             renderUnitList();
+            renderWeaponList(); // 追加
             updateResources();
             updateGachaButton();
 
-            // リスナー
             $('main-slime').addEventListener('pointerdown', (e) => handleMainClick(e));
             $('enemy-container').addEventListener('pointerdown', (e) => handleEnemyClick(e));
             $('auto-battle-check').addEventListener('change', (e) => { battle.auto = e.target.checked; });
 
-            // ループ開始
             requestAnimationFrame(gameLoop);
             saveInterval = setInterval(saveGame, 30000);
         }
@@ -395,14 +450,12 @@
             lastTick = timestamp;
 
             if (dt > 0) {
-                // 生産 (SpS)
                 const sps = calculateSpS();
                 if (sps > 0) addSlimes(sps * dt);
 
-                // バトル (DPS)
                 if ($('tab-battle').style.display !== 'none') {
                     const dps = calculatePartyDps();
-                    damageEnemy(dps * dt);
+                    if (dps > 0) damageEnemy(dps * dt);
                     els.battleDps.textContent = beautify(dps);
                 }
             }
@@ -411,6 +464,8 @@
             updateCooldowns();
             updateResources();
             updateShopButtons();
+            updateWeaponButtons(); // 追加
+            updateGachaButton();
             
             requestAnimationFrame(gameLoop);
         }
@@ -418,22 +473,15 @@
         /* --- 計算系 --- */
 
         function getRebirthMultiplier() {
-            // 獲得総スライム量に応じて倍率アップ (例: 1Mごとに+10%みたいな雑な計算ではなく、対数などを使う)
-            // ここでは簡易的に (totalSlimes / 10000) ^ 0.5 * 0.1 + 1
             if (game.totalSlimes < 1000) return 1;
             return 1 + Math.sqrt(game.totalSlimes / 1000) * 0.1;
         }
 
         function calculateSpS() {
             let sps = 0;
-            BUILDINGS.forEach(b => {
-                sps += b.baseProd * (game.buildings[b.id] || 0);
-            });
-            // バフ適用
+            BUILDINGS.forEach(b => sps += b.baseProd * (game.buildings[b.id] || 0));
             if (activeBuffs['frenzy']) sps *= activeBuffs['frenzy'].val;
-            // 転生倍率
             sps *= getRebirthMultiplier();
-            
             return sps;
         }
 
@@ -442,11 +490,17 @@
             // ユニットボーナス
             UNITS.forEach(u => {
                 const data = game.units[u.id];
-                if (data && data.count > 0) {
-                    power += u.baseClick * data.level * data.count; // 所持数も影響
-                }
+                if (data && data.count > 0) power += u.baseClick * data.level * data.count;
             });
-            // 転生倍率
+            // 武器ボーナス (追加)
+            WEAPONS.forEach(w => {
+                const lv = game.weapons[w.id];
+                if (lv > 0) power += w.basePower * lv;
+            });
+
+            // バフ (Strength)
+            if (activeBuffs['strength']) power *= activeBuffs['strength'].val;
+
             power *= getRebirthMultiplier();
             return Math.max(1, power);
         }
@@ -455,11 +509,12 @@
             let dps = 0;
             UNITS.forEach(u => {
                 const data = game.units[u.id];
-                if (data && data.count > 0) {
-                    dps += u.baseDps * data.level * data.count;
-                }
+                if (data && data.count > 0) dps += u.baseDps * data.level * data.count;
             });
-            return dps; // バトルDPSは転生倍率の影響を受けない（バランス調整）または受けても良い
+            // バフ (Strength)
+            if (activeBuffs['strength']) dps *= activeBuffs['strength'].val;
+            
+            return dps;
         }
 
         function addSlimes(amount) {
@@ -471,22 +526,16 @@
 
         function resetBattle(stage) {
             game.battleStage = stage;
-            // HP計算: 指数関数的に増える
             battle.maxHp = Math.floor(50 * Math.pow(1.5, stage - 1));
             battle.hp = battle.maxHp;
-            
-            // 敵の見た目ランダム
             const emojis = ['👾', '👻', '💀', '👹', '👽', '🤖', '🦖'];
             els.enemyVisual.textContent = emojis[(stage - 1) % emojis.length];
-            
             updateEnemyUI();
         }
 
         function handleEnemyClick(e) {
-            const dmg = calculateClickPower(); // バトルでもクリック力を使用
+            const dmg = calculateClickPower();
             damageEnemy(dmg);
-            
-            // エフェクト
             spawnText(`-${beautify(dmg)}`, e.clientX, e.clientY, 'text-red-500', true);
             els.enemyVisual.classList.remove('shake');
             void els.enemyVisual.offsetWidth;
@@ -495,7 +544,6 @@
 
         function damageEnemy(amount) {
             if (battle.hp <= 0) return;
-            
             battle.hp -= amount;
             if (battle.hp <= 0) {
                 battle.hp = 0;
@@ -505,23 +553,14 @@
         }
 
         function winBattle() {
-            // 報酬: 魔石(Gem) + スライム
             const gemDrop = Math.floor(Math.random() * 2) + 1 + Math.floor(game.battleStage / 5);
             const slimeDrop = calculateSpS() * 10 + (game.battleStage * 100);
-            
             game.gems += gemDrop;
             addSlimes(slimeDrop);
-            
             spawnText(`Victory! +${gemDrop} Gems`, window.innerWidth/2, window.innerHeight/3, 'text-purple-400 text-2xl');
-
-            // 次のステージへ
             setTimeout(() => {
-                if (battle.auto) {
-                    resetBattle(game.battleStage + 1);
-                } else {
-                    // そのまま復活（ファーミング用）
-                    resetBattle(game.battleStage); 
-                }
+                if (battle.auto) resetBattle(game.battleStage + 1);
+                else resetBattle(game.battleStage);
             }, 500);
         }
 
@@ -532,54 +571,95 @@
             els.battleStage.textContent = game.battleStage;
         }
 
-        /* --- ガチャ & ユニット --- */
+        /* --- 武器強化システム (New) --- */
 
-        function getGachaCost() {
-            // 回数に応じてコスト上昇
-            return Math.floor(100 * Math.pow(1.1, game.gachaCount));
+        function renderWeaponList() {
+            els.weaponList.innerHTML = '';
+            WEAPONS.forEach(w => {
+                const div = document.createElement('div');
+                div.id = `weapon-row-${w.id}`;
+                div.className = "bg-slate-700 p-2 rounded flex items-center gap-3 border border-slate-600";
+                div.innerHTML = `
+                    <div class="text-2xl">${w.icon}</div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm font-bold text-slate-200">${w.name}</div>
+                            <div class="text-xs text-slate-400">Lv.<span id="w-lv-${w.id}">0</span></div>
+                        </div>
+                        <div class="text-[10px] text-slate-400">${w.desc} (ATK+${beautify(w.basePower)})</div>
+                    </div>
+                    <button onclick="upgradeWeapon('${w.id}')" id="btn-weapon-${w.id}" class="text-xs text-white px-3 py-2 rounded transition-colors bg-slate-600 disabled:opacity-50">
+                        UP <br> <span id="w-cost-${w.id}" class="font-mono text-[10px]">0</span> Gem
+                    </button>
+                `;
+                els.weaponList.appendChild(div);
+            });
         }
 
+        function updateWeaponButtons() {
+            let canBuy = false;
+            WEAPONS.forEach(w => {
+                const lv = game.weapons[w.id];
+                const cost = Math.floor(w.baseCost * Math.pow(1.3, lv));
+                $(`w-lv-${w.id}`).textContent = lv;
+                $(`w-cost-${w.id}`).textContent = beautify(cost);
+                
+                const btn = $(`btn-weapon-${w.id}`);
+                if (game.gems >= cost) {
+                    btn.disabled = false;
+                    btn.classList.remove('bg-slate-600');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-500', 'can-buy');
+                    canBuy = true;
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('bg-slate-600');
+                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'can-buy');
+                }
+            });
+            els.badgeBattle.classList.toggle('active', canBuy);
+        }
+
+        function upgradeWeapon(id) {
+            const w = WEAPONS.find(x => x.id === id);
+            const lv = game.weapons[id];
+            const cost = Math.floor(w.baseCost * Math.pow(1.3, lv));
+            if (game.gems >= cost) {
+                game.gems -= cost;
+                game.weapons[id]++;
+                updateWeaponButtons();
+            }
+        }
+
+        /* --- ガチャ & ユニット --- */
+        // ... (変更なし、ただし getGachaCost 等は以前のコードを利用) ...
+        function getGachaCost() { return Math.floor(100 * Math.pow(1.1, game.gachaCount)); }
+        
         function pullGacha(times) {
             const cost = getGachaCost();
             if (game.slimes < cost) return;
-
             game.slimes -= cost;
             game.gachaCount += times;
             
-            // 抽選ロジック
             let resultUnit = null;
             let isNew = false;
             let bonusGem = 0;
-
             const rand = Math.random() * 100;
-            let cumulative = 0;
-            
-            // SSRから順に判定
-            const sortedUnits = [...UNITS].sort((a,b) => a.chance - b.chance); // 小さい順(SSR..)だと加算ロジックが面倒なので、逆にするか、合計100前提でやる
-            
-            // シンプルに: N, R, SR, SSRの区分を作る
             let rarity = 'N';
             if (rand < 1) rarity = 'SSR';
             else if (rand < 10) rarity = 'SR';
             else if (rand < 40) rarity = 'R';
-
-            // そのレアリティの中からランダム選出
             const pool = UNITS.filter(u => u.rarity === rarity);
             resultUnit = pool[Math.floor(Math.random() * pool.length)];
 
-            // 獲得処理
             if (game.units[resultUnit.id].count === 0) {
                 game.units[resultUnit.id].count = 1;
                 game.units[resultUnit.id].level = 1;
                 isNew = true;
             } else {
-                // 重複時は魔石に変換 + 重ねて強化(count up)
                 game.units[resultUnit.id].count++;
                 bonusGem = (rarity === 'SSR' ? 10 : rarity === 'SR' ? 5 : rarity === 'R' ? 2 : 1);
                 game.gems += bonusGem;
             }
-
-            // 演出
             showGachaResult(resultUnit, isNew, bonusGem);
             updateGachaButton();
             renderUnitList();
@@ -596,45 +676,53 @@
 
         function upgradeUnit(id) {
             const u = game.units[id];
-            const cost = u.level * 5; // 魔石コスト
+            const cost = u.level * 5;
             if (game.gems >= cost) {
                 game.gems -= cost;
                 u.level++;
                 renderUnitList();
             }
         }
-
-        /* --- UI更新全般 --- */
-
+        
+        // ... (renderUnitList, updateGachaButton, UI更新系は前と同じ) ...
         function updateResources() {
             els.slimes.textContent = beautify(Math.floor(game.slimes));
             els.sps.textContent = beautify(calculateSpS(), 1) + "/s";
             els.gems.textContent = game.gems;
-            
-            // 統計
             els.statRebirth.textContent = `x${beautify(getRebirthMultiplier(), 2)}`;
             els.statClick.textContent = beautify(calculateClickPower());
         }
 
         function updateGachaButton() {
             const cost = getGachaCost();
-            els.gachaCost.textContent = beautify(cost);
             const btn = $('btn-gacha-1');
-            btn.disabled = game.slimes < cost;
-            btn.classList.toggle('opacity-50', game.slimes < cost);
+            const txt = $('gacha-btn-text');
+            const canBuy = game.slimes >= cost;
+            els.badgeGacha.classList.toggle('active', canBuy);
+            if (canBuy) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'bg-slate-700', 'text-slate-400', 'border-slate-600');
+                btn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-500', 'border-blue-400', 'can-buy');
+                txt.innerHTML = `1回召喚 (<span class="font-mono">${beautify(cost)}</span> Slimes)`;
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'bg-slate-700', 'text-slate-400', 'border-slate-600');
+                btn.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-500', 'border-blue-400', 'can-buy');
+                const diff = cost - game.slimes;
+                txt.innerHTML = `不足: ${beautify(diff)} Slimes (Cost: ${beautify(cost)})`;
+            }
         }
 
         function renderUnitList() {
             els.unitList.innerHTML = '';
             let hasUnit = false;
-
-            // 所持ユニットを表示
             UNITS.forEach(u => {
                 const data = game.units[u.id];
                 if (data && data.count > 0) {
                     hasUnit = true;
                     const div = document.createElement('div');
                     const cost = data.level * 5;
+                    const canUp = game.gems >= cost;
                     div.className = "bg-slate-800 border border-slate-700 p-3 rounded flex items-center gap-3";
                     div.innerHTML = `
                         <div class="text-3xl">${u.icon}</div>
@@ -645,14 +733,13 @@
                             </div>
                             <div class="text-[10px] text-slate-400">DPS: ${beautify(u.baseDps * data.level * data.count)} | Click: ${beautify(u.baseClick * data.level * data.count)}</div>
                         </div>
-                        <button onclick="upgradeUnit('${u.id}')" class="bg-purple-600 text-xs text-white px-3 py-2 rounded hover:bg-purple-500 disabled:opacity-50" ${game.gems < cost ? 'disabled' : ''}>
+                        <button onclick="upgradeUnit('${u.id}')" class="text-xs text-white px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${canUp ? 'bg-purple-600 hover:bg-purple-500 can-buy' : 'bg-slate-700'}" ${!canUp ? 'disabled' : ''}>
                             UP (${cost} Gem)
                         </button>
                     `;
                     els.unitList.appendChild(div);
                 }
             });
-
             if (!hasUnit) els.unitList.innerHTML = '<div class="text-center text-slate-500 py-4">まだ仲間がいません</div>';
         }
 
@@ -663,18 +750,13 @@
             return 'text-slate-400';
         }
 
-        /* --- インタラクション --- */
-
         function handleMainClick(e) {
             const amount = calculateClickPower();
             addSlimes(amount);
-            
-            // アニメーション
             const s = $('main-slime');
             s.classList.remove('anim-click');
             void s.offsetWidth;
             s.classList.add('anim-click');
-
             spawnText(`+${beautify(amount)}`, e.clientX, e.clientY);
         }
 
@@ -684,19 +766,13 @@
             el.className = `damage-text text-2xl ${colorClass}`;
             el.style.left = `${x}px`;
             el.style.top = `${y}px`;
-            
-            // ゆらぎ
             const rx = (Math.random() - 0.5) * 30;
             el.style.transform = `translateX(${rx}px)`;
-
             els.effectLayer.appendChild(el);
             setTimeout(() => el.remove(), 800);
         }
 
-        /* --- ショップ & 転生 --- */
-
         function renderShop() {
-            // 消耗品
             els.shopConsumables.innerHTML = '';
             CONSUMABLES.forEach(item => {
                 const div = document.createElement('div');
@@ -718,8 +794,6 @@
                 `;
                 els.shopConsumables.appendChild(div);
             });
-
-            // 施設
             els.shopBuildings.innerHTML = '';
             BUILDINGS.forEach(b => {
                 const div = document.createElement('div');
@@ -744,35 +818,45 @@
         }
 
         function updateShopButtons() {
-            // 施設
+            let canBuyAnything = false;
             BUILDINGS.forEach(b => {
                 const cost = Math.floor(b.baseCost * Math.pow(1.15, game.buildings[b.id]));
                 $(`cost-${b.id}`).textContent = beautify(cost);
                 $(`count-${b.id}`).textContent = game.buildings[b.id];
                 const btn = $(`btn-build-${b.id}`);
-                btn.classList.toggle('opacity-50', game.slimes < cost);
+                if (game.slimes >= cost) {
+                    btn.classList.remove('opacity-50');
+                    btn.classList.add('can-buy');
+                    canBuyAnything = true;
+                } else {
+                    btn.classList.add('opacity-50');
+                    btn.classList.remove('can-buy');
+                }
             });
-
-            // 消耗品 (CDとコスト)
             CONSUMABLES.forEach(item => {
                 const btn = $(`btn-item-${item.id}`);
                 const overlay = $(`cd-overlay-${item.id}`);
                 const now = Date.now();
-                
-                // CDチェック
                 if (cooldowns[item.id] && cooldowns[item.id] > now) {
                     overlay.classList.remove('hidden');
                     const left = Math.ceil((cooldowns[item.id] - now) / 1000);
                     overlay.textContent = left + "s";
                     btn.style.pointerEvents = 'none';
+                    btn.classList.remove('can-buy');
                 } else {
                     overlay.classList.add('hidden');
                     btn.style.pointerEvents = 'auto';
-                    btn.classList.toggle('opacity-50', game.slimes < item.baseCost);
+                    if (game.slimes >= item.baseCost) {
+                         btn.classList.remove('opacity-50');
+                         btn.classList.add('can-buy');
+                         canBuyAnything = true;
+                    } else {
+                        btn.classList.add('opacity-50');
+                        btn.classList.remove('can-buy');
+                    }
                 }
             });
-
-            // 転生プレビュー
+            els.badgeShop.classList.toggle('active', canBuyAnything);
             const multi = getRebirthMultiplier();
             els.rebirthPreview.textContent = `x${beautify(multi, 2)}`;
         }
@@ -791,28 +875,20 @@
             if (game.slimes >= item.baseCost) {
                 game.slimes -= item.baseCost;
                 item.onBuy();
-                // クールダウンセット
-                if (item.cooldown) {
-                    cooldowns[item.id] = Date.now() + item.cooldown * 1000;
-                }
+                if (item.cooldown) cooldowns[item.id] = Date.now() + item.cooldown * 1000;
                 updateShopButtons();
             }
         }
 
         function rebirth() {
-            if (!confirm("転生しますか？\nスライムと施設はリセットされますが、仲間と魔石は引き継がれます。\n獲得総スライム数に応じて生産倍率が上がります。")) return;
-            
-            // リセット処理
+            if (!confirm("転生しますか？\nスライムと施設、ステージ進行はリセットされますが、\n仲間、魔石、武器レベルは引き継がれます。")) return;
             game.slimes = 0;
             BUILDINGS.forEach(b => game.buildings[b.id] = 0);
             game.battleStage = 1;
             game.rebirthCount++;
-            
             saveGame();
-            location.reload(); // 簡易リロード
+            location.reload();
         }
-
-        /* --- システム --- */
 
         function addBuff(type, duration, val) {
             const now = Date.now();
@@ -823,42 +899,32 @@
             const now = Date.now();
             const container = $('buff-container');
             container.innerHTML = '';
-            
             Object.keys(activeBuffs).forEach(k => {
                 if (activeBuffs[k].end > now) {
                     const left = Math.ceil((activeBuffs[k].end - now) / 1000);
                     const div = document.createElement('div');
                     div.className = "bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded animate-pulse";
-                    div.textContent = `BOOST: ${left}s`;
+                    div.textContent = k === 'strength' ? `STR x2: ${left}s` : `PROD x3: ${left}s`;
                     container.appendChild(div);
                 }
             });
         }
         
-        function updateCooldowns() {
-            // ShopUI更新でやるのでここは空でもOKだが将来拡張用
-        }
+        function updateCooldowns() {}
 
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); // hiddenクラス操作だとflexが壊れることがあるためstyle操作
-            
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
             const target = $(`tab-${tabName}`);
-            if (tabName === 'main' || tabName === 'battle') target.style.display = 'flex'; // Main/Battleはflex
-            else target.style.display = 'flex'; 
-
-            target.classList.remove('hidden'); // hiddenクラスも一応取る
-            
+            target.style.display = 'flex';
+            target.classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400'));
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.add('text-slate-400'));
-            
-            // 対象ボタンを青くする(簡易実装)
             event.currentTarget.classList.add('text-blue-400');
             event.currentTarget.classList.remove('text-slate-400');
         }
 
-        /* --- ユーティリティ --- */
         function beautify(num, d=0) {
-            if (num < 1000) return Math.floor(num * 10)/10; // 小数点ちらつき防止
+            if (num < 1000) return Math.floor(num * 10)/10;
             const units = ['k', 'M', 'B', 'T', 'Qa'];
             const order = Math.floor(Math.log10(num) / 3);
             if (order >= units.length + 1) return 'INF';
@@ -867,20 +933,19 @@
 
         function saveGame() {
             game.lastSave = Date.now();
-            localStorage.setItem('slimeClickerRPG_v1', JSON.stringify(game));
+            localStorage.setItem('slimeClickerRPG_v2', JSON.stringify(game));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('slimeClickerRPG_v1');
+            const saved = localStorage.getItem('slimeClickerRPG_v2');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
                     game = { ...game, ...parsed };
-                    // オフライン進行 (簡易)
                     const now = Date.now();
                     const diff = (now - game.lastSave) / 1000;
                     if (diff > 60) {
-                        const gain = calculateSpS() * diff * 0.5; // 50%効率
+                        const gain = calculateSpS() * diff * 0.5;
                         if(gain > 0) {
                             addSlimes(gain);
                             alert(`おかえりなさい！\n留守中に ${beautify(gain)} スライム稼ぎました。`);
@@ -892,13 +957,12 @@
 
         function hardReset() {
             if(confirm("本当に全データを削除しますか？復元できません。")) {
-                localStorage.removeItem('slimeClickerRPG_v1');
+                localStorage.removeItem('slimeClickerRPG_v2');
                 location.reload();
             }
         }
 
         window.onload = init;
-
     </script>
 </body>
 </html>
