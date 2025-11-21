@@ -116,6 +116,14 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+        
+        /* ロック状態 */
+        .locked-btn {
+            background-color: #334155;
+            color: #94a3b8;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col">
@@ -276,9 +284,14 @@
                         <span class="text-xs text-slate-400">現在の獲得ボーナス: </span>
                         <span id="rebirth-preview" class="font-bold text-yellow-400">+0%</span>
                     </div>
-                    <button onclick="rebirth()" class="w-full py-2 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded transition-colors font-bold">
-                        転生する
+                    <!-- リボーンボタン -->
+                    <button id="btn-rebirth" onclick="rebirth()" class="w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded transition-colors font-bold disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-red-500 disabled:cursor-not-allowed">
+                        転生する (条件未達)
                     </button>
+                    <div id="rebirth-progress" class="w-full bg-slate-800 h-2 mt-2 rounded-full overflow-hidden hidden">
+                        <div id="rebirth-bar" class="h-full bg-red-500 w-0 transition-all"></div>
+                    </div>
+                    <div class="text-center text-[10px] text-slate-500 mt-1">条件: 累計100万スライム獲得</div>
                 </div>
 
                 <!-- データリセット -->
@@ -325,13 +338,15 @@
 
     <script>
         /* --- 定数・データ --- */
+        const REBIRTH_REQ = 1000000; // 転生に必要な累計スライム数 (1M)
+
         const BUILDINGS = [
             { id: 'stick', name: '木の棒', icon: '🪵', baseCost: 15, baseProd: 0.1, desc: 'つつくと少しスライムが増える' },
             { id: 'kid', name: '村の子供', icon: '👦', baseCost: 100, baseProd: 1, desc: 'お小遣いをあげて雇った子供' },
-            { id: 'ranch', name: 'スライム牧場', icon: '🛖', baseCost: 1100, baseProd: 8, desc: '放し飼い施設。餌は水でOK' },
-            { id: 'flask', name: '錬金フラスコ', icon: '⚗️', baseCost: 12000, baseProd: 47, desc: '科学と魔法の融合' },
-            { id: 'summon', name: '古代の召喚陣', icon: '🔮', baseCost: 130000, baseProd: 260, desc: '異世界から呼び出す' },
-            { id: 'planet', name: 'スライム惑星', icon: '🪐', baseCost: 1400000, baseProd: 1400, desc: '星ごとスライム化' }
+            { id: 'ranch', name: 'スライム牧場', icon: '🛖', baseCost: 1100, baseProd: 12, desc: '放し飼い施設。餌は水でOK' }, // Prod UP
+            { id: 'flask', name: '錬金フラスコ', icon: '⚗️', baseCost: 12000, baseProd: 60, desc: '科学と魔法の融合' }, // Prod UP
+            { id: 'summon', name: '古代の召喚陣', icon: '🔮', baseCost: 130000, baseProd: 350, desc: '異世界から呼び出す' }, // Prod UP
+            { id: 'planet', name: 'スライム惑星', icon: '🪐', baseCost: 1400000, baseProd: 2000, desc: '星ごとスライム化' } // Prod UP
         ];
 
         // ユニット定義 (ガチャ)
@@ -384,8 +399,8 @@
             totalSlimes: 0,
             gems: 0,
             buildings: {},
-            units: {}, // { u1: { level: 1, count: 1 } }
-            weapons: {}, // { w_wood: 1 } Lv
+            units: {}, 
+            weapons: {},
             gachaCount: 0,
             rebirthCount: 0,
             battleStage: 1,
@@ -399,7 +414,7 @@
         // 一時状態
         let lastTick = performance.now();
         let activeBuffs = {};
-        let cooldowns = {}; // { redPotion: endTime }
+        let cooldowns = {};
         let battle = {
             hp: 10,
             maxHp: 10,
@@ -419,7 +434,8 @@
             gachaCost: $('gacha-cost'), unitList: $('unit-list'), weaponList: $('weapon-list'),
             shopBuildings: $('shop-buildings'), shopConsumables: $('shop-consumables'),
             rebirthPreview: $('rebirth-preview'), statRebirth: $('stat-rebirth'), statClick: $('stat-click'),
-            badgeGacha: $('badge-gacha'), badgeShop: $('badge-shop'), badgeBattle: $('badge-battle')
+            badgeGacha: $('badge-gacha'), badgeShop: $('badge-shop'), badgeBattle: $('badge-battle'),
+            btnRebirth: $('btn-rebirth'), rebirthProgress: $('rebirth-progress'), rebirthBar: $('rebirth-bar')
         };
 
         /* --- コアロジック --- */
@@ -433,7 +449,7 @@
             resetBattle(game.battleStage);
             renderShop();
             renderUnitList();
-            renderWeaponList(); // 追加
+            renderWeaponList(); 
             updateResources();
             updateGachaButton();
 
@@ -464,8 +480,9 @@
             updateCooldowns();
             updateResources();
             updateShopButtons();
-            updateWeaponButtons(); // 追加
+            updateWeaponButtons(); 
             updateGachaButton();
+            updateRebirthUI(); // リボーンUI更新追加
             
             requestAnimationFrame(gameLoop);
         }
@@ -487,20 +504,15 @@
 
         function calculateClickPower() {
             let power = 1;
-            // ユニットボーナス
             UNITS.forEach(u => {
                 const data = game.units[u.id];
                 if (data && data.count > 0) power += u.baseClick * data.level * data.count;
             });
-            // 武器ボーナス (追加)
             WEAPONS.forEach(w => {
                 const lv = game.weapons[w.id];
                 if (lv > 0) power += w.basePower * lv;
             });
-
-            // バフ (Strength)
             if (activeBuffs['strength']) power *= activeBuffs['strength'].val;
-
             power *= getRebirthMultiplier();
             return Math.max(1, power);
         }
@@ -511,7 +523,6 @@
                 const data = game.units[u.id];
                 if (data && data.count > 0) dps += u.baseDps * data.level * data.count;
             });
-            // バフ (Strength)
             if (activeBuffs['strength']) dps *= activeBuffs['strength'].val;
             
             return dps;
@@ -526,7 +537,8 @@
 
         function resetBattle(stage) {
             game.battleStage = stage;
-            battle.maxHp = Math.floor(50 * Math.pow(1.5, stage - 1));
+            // バランス調整: 敵HPの上昇率を上げる (1.5 -> 1.6)
+            battle.maxHp = Math.floor(50 * Math.pow(1.6, stage - 1));
             battle.hp = battle.maxHp;
             const emojis = ['👾', '👻', '💀', '👹', '👽', '🤖', '🦖'];
             els.enemyVisual.textContent = emojis[(stage - 1) % emojis.length];
@@ -554,7 +566,10 @@
 
         function winBattle() {
             const gemDrop = Math.floor(Math.random() * 2) + 1 + Math.floor(game.battleStage / 5);
-            const slimeDrop = calculateSpS() * 10 + (game.battleStage * 100);
+            // バランス調整: 戦闘によるスライム獲得量を減らし、生産施設の重要性を上げる
+            // 以前: calculateSpS() * 10 + (stage * 100)
+            const slimeDrop = calculateSpS() * 2 + (game.battleStage * 50);
+            
             game.gems += gemDrop;
             addSlimes(slimeDrop);
             spawnText(`Victory! +${gemDrop} Gems`, window.innerWidth/2, window.innerHeight/3, 'text-purple-400 text-2xl');
@@ -571,7 +586,7 @@
             els.battleStage.textContent = game.battleStage;
         }
 
-        /* --- 武器強化システム (New) --- */
+        /* --- 武器強化システム --- */
 
         function renderWeaponList() {
             els.weaponList.innerHTML = '';
@@ -631,7 +646,6 @@
         }
 
         /* --- ガチャ & ユニット --- */
-        // ... (変更なし、ただし getGachaCost 等は以前のコードを利用) ...
         function getGachaCost() { return Math.floor(100 * Math.pow(1.1, game.gachaCount)); }
         
         function pullGacha(times) {
@@ -684,7 +698,6 @@
             }
         }
         
-        // ... (renderUnitList, updateGachaButton, UI更新系は前と同じ) ...
         function updateResources() {
             els.slimes.textContent = beautify(Math.floor(game.slimes));
             els.sps.textContent = beautify(calculateSpS(), 1) + "/s";
@@ -857,8 +870,31 @@
                 }
             });
             els.badgeShop.classList.toggle('active', canBuyAnything);
+        }
+        
+        function updateRebirthUI() {
             const multi = getRebirthMultiplier();
             els.rebirthPreview.textContent = `x${beautify(multi, 2)}`;
+
+            const btn = els.btnRebirth;
+            const bar = els.rebirthBar;
+            const progressContainer = els.rebirthProgress;
+            
+            if (game.totalSlimes >= REBIRTH_REQ) {
+                btn.disabled = false;
+                btn.textContent = "転生する (条件達成！)";
+                btn.classList.remove('locked-btn');
+                progressContainer.classList.add('hidden');
+            } else {
+                btn.disabled = true;
+                btn.textContent = `転生にはあと ${beautify(REBIRTH_REQ - game.totalSlimes)} スライム必要`;
+                btn.classList.add('locked-btn');
+                
+                // プログレスバー更新
+                progressContainer.classList.remove('hidden');
+                const pct = Math.min(100, (game.totalSlimes / REBIRTH_REQ) * 100);
+                bar.style.width = `${pct}%`;
+            }
         }
 
         function buyBuilding(id) {
@@ -881,6 +917,7 @@
         }
 
         function rebirth() {
+            if (game.totalSlimes < REBIRTH_REQ) return;
             if (!confirm("転生しますか？\nスライムと施設、ステージ進行はリセットされますが、\n仲間、魔石、武器レベルは引き継がれます。")) return;
             game.slimes = 0;
             BUILDINGS.forEach(b => game.buildings[b.id] = 0);
@@ -933,11 +970,11 @@
 
         function saveGame() {
             game.lastSave = Date.now();
-            localStorage.setItem('slimeClickerRPG_v2', JSON.stringify(game));
+            localStorage.setItem('slimeClickerRPG_v3', JSON.stringify(game));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('slimeClickerRPG_v2');
+            const saved = localStorage.getItem('slimeClickerRPG_v3');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -957,7 +994,7 @@
 
         function hardReset() {
             if(confirm("本当に全データを削除しますか？復元できません。")) {
-                localStorage.removeItem('slimeClickerRPG_v2');
+                localStorage.removeItem('slimeClickerRPG_v3');
                 location.reload();
             }
         }
