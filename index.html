@@ -190,10 +190,14 @@
                     <div id="enemy-visual" class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center text-6xl shadow-2xl border-2 border-red-900/50">
                         👾
                     </div>
+                    <!-- クリック指示アニメ -->
+                    <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-400 animate-bounce pointer-events-none whitespace-nowrap">
+                        TAP TO ATTACK!
+                    </div>
                 </div>
 
                 <!-- HPバー -->
-                <div class="w-64 bg-slate-700 h-4 rounded-full overflow-hidden border border-slate-600 mt-4 relative">
+                <div class="w-64 bg-slate-700 h-4 rounded-full overflow-hidden border border-slate-600 mt-6 relative">
                     <div id="enemy-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-200" style="width: 100%"></div>
                     <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold shadow-black drop-shadow-md">
                         HP: <span id="enemy-hp-text">100/100</span>
@@ -201,7 +205,7 @@
                 </div>
 
                 <div class="mt-2 text-center space-y-1">
-                    <div class="text-xs font-bold text-slate-300">Party DPS: <span id="battle-dps" class="text-red-400">0</span></div>
+                    <div class="text-xs font-bold text-slate-300">Total Attack: <span id="battle-dps" class="text-red-400">0</span></div>
                 </div>
                 
                 <!-- オート進行トグル -->
@@ -350,6 +354,7 @@
         ];
 
         // ユニット定義 (ガチャ)
+        // 変更：仲間のDpsとClickは統合して「Click Power（連携攻撃）」として計算する
         const UNITS = [
             { id: 'u1', name: 'スライム兵', rarity: 'N', icon: '🗡️', chance: 60, baseDps: 5, baseClick: 2, desc: '剣を持ったスライム' },
             { id: 'u2', name: 'スライム弓兵', rarity: 'N', icon: '🏹', chance: 60, baseDps: 8, baseClick: 1, desc: '遠くから狙い撃つ' },
@@ -469,9 +474,12 @@
                 const sps = calculateSpS();
                 if (sps > 0) addSlimes(sps * dt);
 
+                // 自動攻撃ロジックを削除
+                // プレイヤーがクリックしない限りダメージは入らない
+                
                 if ($('tab-battle').style.display !== 'none') {
-                    const dps = calculatePartyDps();
-                    if (dps > 0) damageEnemy(dps * dt);
+                    // 表示更新のみ行う
+                    const dps = calculateTotalClickPower();
                     els.battleDps.textContent = beautify(dps);
                 }
             }
@@ -482,7 +490,7 @@
             updateShopButtons();
             updateWeaponButtons(); 
             updateGachaButton();
-            updateRebirthUI(); // リボーンUI更新追加
+            updateRebirthUI();
             
             requestAnimationFrame(gameLoop);
         }
@@ -502,30 +510,29 @@
             return sps;
         }
 
-        function calculateClickPower() {
+        // プレイヤーのクリック力（武器 + 仲間の全ステータス）
+        function calculateTotalClickPower() {
             let power = 1;
+            // ユニットボーナス（DPSもClickも全部クリック攻撃力に変換）
             UNITS.forEach(u => {
                 const data = game.units[u.id];
-                if (data && data.count > 0) power += u.baseClick * data.level * data.count;
+                if (data && data.count > 0) {
+                    power += (u.baseClick + u.baseDps) * data.level * data.count;
+                }
             });
+            // 武器ボーナス
             WEAPONS.forEach(w => {
                 const lv = game.weapons[w.id];
                 if (lv > 0) power += w.basePower * lv;
             });
-            if (activeBuffs['strength']) power *= activeBuffs['strength'].val;
-            power *= getRebirthMultiplier();
-            return Math.max(1, power);
-        }
-
-        function calculatePartyDps() {
-            let dps = 0;
-            UNITS.forEach(u => {
-                const data = game.units[u.id];
-                if (data && data.count > 0) dps += u.baseDps * data.level * data.count;
-            });
-            if (activeBuffs['strength']) dps *= activeBuffs['strength'].val;
             
-            return dps;
+            // バフ
+            if (activeBuffs['strength']) power *= activeBuffs['strength'].val;
+            
+            // 転生
+            power *= getRebirthMultiplier();
+            
+            return Math.max(1, power);
         }
 
         function addSlimes(amount) {
@@ -537,7 +544,7 @@
 
         function resetBattle(stage) {
             game.battleStage = stage;
-            // バランス調整: 敵HPの上昇率を上げる (1.5 -> 1.6)
+            // 敵HP計算
             battle.maxHp = Math.floor(50 * Math.pow(1.6, stage - 1));
             battle.hp = battle.maxHp;
             const emojis = ['👾', '👻', '💀', '👹', '👽', '🤖', '🦖'];
@@ -546,7 +553,7 @@
         }
 
         function handleEnemyClick(e) {
-            const dmg = calculateClickPower();
+            const dmg = calculateTotalClickPower();
             damageEnemy(dmg);
             spawnText(`-${beautify(dmg)}`, e.clientX, e.clientY, 'text-red-500', true);
             els.enemyVisual.classList.remove('shake');
@@ -566,8 +573,6 @@
 
         function winBattle() {
             const gemDrop = Math.floor(Math.random() * 2) + 1 + Math.floor(game.battleStage / 5);
-            // バランス調整: 戦闘によるスライム獲得量を減らし、生産施設の重要性を上げる
-            // 以前: calculateSpS() * 10 + (stage * 100)
             const slimeDrop = calculateSpS() * 2 + (game.battleStage * 50);
             
             game.gems += gemDrop;
@@ -703,7 +708,7 @@
             els.sps.textContent = beautify(calculateSpS(), 1) + "/s";
             els.gems.textContent = game.gems;
             els.statRebirth.textContent = `x${beautify(getRebirthMultiplier(), 2)}`;
-            els.statClick.textContent = beautify(calculateClickPower());
+            els.statClick.textContent = beautify(calculateTotalClickPower());
         }
 
         function updateGachaButton() {
@@ -737,6 +742,10 @@
                     const cost = data.level * 5;
                     const canUp = game.gems >= cost;
                     div.className = "bg-slate-800 border border-slate-700 p-3 rounded flex items-center gap-3";
+                    
+                    // DPS + Clickを統合して表示
+                    const totalPower = (u.baseClick + u.baseDps) * data.level * data.count;
+                    
                     div.innerHTML = `
                         <div class="text-3xl">${u.icon}</div>
                         <div class="flex-1">
@@ -744,7 +753,7 @@
                                 <div class="font-bold text-slate-200">${u.name} <span class="text-xs ${getRarityColor(u.rarity)}">[${u.rarity}]</span></div>
                                 <div class="text-xs text-slate-400">Lv.${data.level} (x${data.count})</div>
                             </div>
-                            <div class="text-[10px] text-slate-400">DPS: ${beautify(u.baseDps * data.level * data.count)} | Click: ${beautify(u.baseClick * data.level * data.count)}</div>
+                            <div class="text-[10px] text-slate-400">Click Power +${beautify(totalPower)} (連携攻撃)</div>
                         </div>
                         <button onclick="upgradeUnit('${u.id}')" class="text-xs text-white px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${canUp ? 'bg-purple-600 hover:bg-purple-500 can-buy' : 'bg-slate-700'}" ${!canUp ? 'disabled' : ''}>
                             UP (${cost} Gem)
@@ -764,7 +773,7 @@
         }
 
         function handleMainClick(e) {
-            const amount = calculateClickPower();
+            const amount = calculateTotalClickPower();
             addSlimes(amount);
             const s = $('main-slime');
             s.classList.remove('anim-click');
