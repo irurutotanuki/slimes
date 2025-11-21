@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>スライムクリッカー (Slime Clicker)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* アニメーション定義 */
+        @keyframes jelly {
+            0%, 100% { transform: scale(1, 1); }
+            25% { transform: scale(0.9, 1.1); }
+            50% { transform: scale(1.1, 0.9); }
+            75% { transform: scale(0.95, 1.05); }
+        }
+
+        .slime-click-anim {
+            animation: click-squish 0.1s ease-out;
+        }
+
+        @keyframes click-squish {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        /* 巨大スライム */
+        .giant-slime {
+            width: 200px;
+            height: 180px;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
+            border-radius: 50% 50% 40% 40%;
+            position: relative;
+            box-shadow: 
+                inset 10px 10px 20px rgba(255,255,255,0.4),
+                inset -10px -20px 20px rgba(0,0,0,0.2),
+                0 15px 30px rgba(37, 99, 235, 0.4);
+            transition: transform 0.1s, filter 0.3s;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .giant-slime::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 20%;
+            width: 25%;
+            height: 15%;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            transform: rotate(-45deg);
+        }
+
+        /* ブースト時の発光エフェクト */
+        .boost-active .giant-slime {
+            filter: drop-shadow(0 0 15px #facc15) brightness(1.1);
+            animation: jelly 0.5s infinite;
+        }
+
+        /* ゴールデンスライム */
+        .golden-slime {
+            position: absolute;
+            width: 60px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #fde047, #eab308);
+            border-radius: 50% 50% 40% 40%;
+            box-shadow: 0 0 15px #facc15;
+            cursor: pointer;
+            z-index: 100;
+            animation: jelly 2s infinite, float 3s ease-in-out infinite;
+            pointer-events: auto;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* ポップアップ数値 */
+        .floating-number {
+            position: absolute;
+            font-weight: bold;
+            color: white;
+            pointer-events: none;
+            animation: float-up 1s forwards;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 20;
+        }
+
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+        }
+
+        /* パーティクル */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-anim 0.8s forwards;
+        }
+
+        @keyframes particle-anim {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        /* スクロールバー */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+
+    <!-- 左カラム: メインゲームエリア -->
+    <section id="main-area" class="relative w-full md:w-5/12 h-1/2 md:h-full bg-slate-900 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-700 p-4 z-10">
+        
+        <!-- バフ表示エリア -->
+        <div id="buff-container" class="absolute top-4 left-4 right-4 flex flex-wrap gap-2 justify-center z-20 pointer-events-none">
+            <!-- JSで生成 -->
+        </div>
+
+        <!-- 数値表示 -->
+        <div class="text-center mb-8 relative z-10">
+            <div class="text-sm text-slate-400 font-bold uppercase tracking-wider mb-1">Slimes</div>
+            <div id="score-display" class="text-5xl md:text-6xl font-bold text-blue-400 drop-shadow-lg tabular-nums">0</div>
+            <div class="text-slate-400 mt-2 text-lg font-bold tabular-nums flex items-center justify-center gap-2">
+                <span><span id="sps-display">0.0</span> /秒</span>
+            </div>
+        </div>
+
+        <!-- 巨大スライム -->
+        <div class="relative flex items-center justify-center w-full h-64">
+            <div id="giant-slime" class="giant-slime hover:scale-105 active:scale-95 transition-transform">
+                <div class="absolute top-[35%] left-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
+                <div class="absolute top-[35%] right-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
+                <div class="absolute top-[55%] left-[45%] w-[10%] h-[5%] bg-slate-900 rounded-full opacity-50"></div>
+            </div>
+        </div>
+
+        <!-- エフェクトコンテナ -->
+        <div id="click-effect-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+    </section>
+
+    <!-- 右カラム: ショップ -->
+    <section class="w-full md:w-7/12 h-1/2 md:h-full flex flex-col bg-slate-800">
+        <div class="flex bg-slate-800 border-b border-slate-700 shrink-0">
+            <div class="px-6 py-3 text-blue-400 font-bold border-b-2 border-blue-400 bg-slate-800/50">
+                ショップ (Shop)
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-2 md:p-4 space-y-6 custom-scrollbar">
+            
+            <!-- ポーション・消耗品 -->
+            <div id="consumables-section" class="hidden">
+                <h3 class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <span>🧪 Potions (消耗品)</span>
+                    <span class="text-[10px] text-slate-500">何度でも買えます</span>
+                </h3>
+                <div id="consumables-container" class="grid grid-cols-1 gap-2">
+                    <!-- JSで生成 -->
+                </div>
+            </div>
+
+            <!-- アップグレード (リスト形式に変更) -->
+            <div id="upgrades-section" class="hidden">
+                <h3 class="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <span>⚡ Upgrades (強化)</span>
+                    <span class="text-[10px] text-slate-500">一度だけの永続効果</span>
+                </h3>
+                <div id="upgrades-container" class="grid grid-cols-1 gap-2">
+                    <!-- JSで生成: リスト形式にして説明文を常時表示 -->
+                </div>
+            </div>
+
+            <!-- 施設リスト -->
+            <div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center px-1">
+                    <span>Buildings (施設)</span>
+                    <span class="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-300">Cost x1.15</span>
+                </h3>
+                <div id="buildings-container" class="space-y-2">
+                    <!-- JSで生成 -->
+                </div>
+            </div>
+            
+            <div class="pt-8 pb-4 flex justify-between items-center text-xs text-slate-500 border-t border-slate-700 mt-4">
+                <span>Auto-saved locally.</span>
+                <button onclick="hardReset()" class="text-red-500 hover:text-red-400 underline">リセット</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="golden-slime-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+    <script>
+        /* --- データ定義 --- */
+        const BUILDINGS = [
+            { id: 'stick', name: '木の棒', icon: '🪵', baseCost: 15, baseProd: 0.1, desc: 'つつくと少しスライムが増える。' },
+            { id: 'kid', name: '村の子供', icon: '👦', baseCost: 100, baseProd: 1, desc: 'お小遣いをあげて雇った子供。' },
+            { id: 'ranch', name: 'スライム牧場', icon: '🛖', baseCost: 1100, baseProd: 8, desc: 'スライムを放し飼いにする施設。' },
+            { id: 'flask', name: '錬金術師のフラスコ', icon: '⚗️', baseCost: 12000, baseProd: 47, desc: '科学と魔法の融合。' },
+            { id: 'summon', name: '古代の召喚陣', icon: '🔮', baseCost: 130000, baseProd: 260, desc: '異世界からスライムを呼び出す。' },
+            { id: 'planet', name: 'スライム惑星', icon: '🪐', baseCost: 1400000, baseProd: 1400, desc: '惑星ひとつを丸ごと採掘する。' }
+        ];
+
+        const UPGRADES = [
+            // クリック強化系
+            { 
+                id: 'glove1', name: '厚手の軍手', icon: '🧤', cost: 500, 
+                desc: 'クリックで得られるスライムが +1 されます。',
+                condition: (g) => g.clicks >= 50,
+                effectType: 'clickAdd', value: 1
+            },
+            { 
+                id: 'glove2', name: 'パワーグローブ', icon: '🥊', cost: 5000, 
+                desc: 'クリックで得られるスライムが +5 されます。',
+                condition: (g) => g.clicks >= 500,
+                effectType: 'clickAdd', value: 5
+            },
+            { 
+                id: 'clickPercent1', name: 'スライムとの絆', icon: '❤️', cost: 50000, 
+                desc: '毎秒生産量の 1% がクリックに追加されます。',
+                condition: (g) => g.totalSlimes >= 10000,
+                effectType: 'clickPercent', value: 0.01
+            },
+            // 生産強化系
+            { 
+                id: 'hardenedFinger', name: '硬い指先', icon: '👆', cost: 2000, 
+                desc: 'クリック効率が 2倍 になります。',
+                condition: (g) => g.clicks >= 200,
+                effectType: 'clickMult', value: 2
+            },
+            { 
+                id: 'blueDye', name: '青い染料', icon: '🎨', cost: 11000, 
+                desc: '「スライム牧場」の生産量が 2倍 になります。',
+                condition: (g) => g.buildings['ranch'] >= 10,
+                effectType: 'buildingMult', target: 'ranch', value: 2
+            },
+            { 
+                id: 'fakeStone', name: '賢者の石（偽）', icon: '💎', cost: 120000, 
+                desc: '全ての施設の生産量が 1.1倍 になります。',
+                condition: (g) => g.buildings['flask'] >= 20,
+                effectType: 'globalMult', value: 1.1
+            }
+        ];
+
+        const CONSUMABLES = [
+            {
+                id: 'redPotion', name: '赤のポーション', icon: '🧪', baseCost: 1000,
+                desc: '30秒間、全生産量が 3倍 になります。',
+                duration: 30,
+                onBuy: (g) => addBuff('frenzy', 30, 3)
+            },
+            {
+                id: 'bluePotion', name: '青のポーション', icon: '💧', baseCost: 5000,
+                desc: '30秒間、クリック力が 5倍 になります。',
+                duration: 30,
+                onBuy: (g) => addBuff('clickFrenzy', 30, 5)
+            },
+            {
+                id: 'goldPotion', name: '黄のポーション', icon: '✨', baseCost: 10000,
+                desc: '現在の毎秒生産量の 300秒分 を即座に獲得します。',
+                duration: 0,
+                onBuy: (g) => {
+                    const sps = calculateSpS();
+                    const amount = Math.max(sps * 300, 1000);
+                    addSlimes(amount);
+                    spawnFloatingText(`+${beautify(amount)}`, window.innerWidth/2, window.innerHeight/2);
+                }
+            }
+        ];
+
+        /* --- ゲーム状態 --- */
+        let game = {
+            slimes: 0,
+            totalSlimes: 0,
+            clicks: 0,
+            buildings: {},
+            upgrades: {},
+            lastSave: Date.now()
+        };
+        
+        // バフ管理（セーブしない一時的なもの）
+        let activeBuffs = {}; // { frenzy: { endTime: 123456789, multiplier: 3 } }
+
+        // 初期化
+        BUILDINGS.forEach(b => { if (game.buildings[b.id] === undefined) game.buildings[b.id] = 0; });
+        UPGRADES.forEach(u => { if (game.upgrades[u.id] === undefined) game.upgrades[u.id] = false; });
+
+        /* --- システム変数 --- */
+        let lastTick = performance.now();
+        let saveInterval;
+        const els = {}; // DOMキャッシュ
+
+        /* --- 初期化処理 --- */
+        function init() {
+            // DOM要素取得
+            ['score-display', 'sps-display', 'giant-slime', 'buildings-container', 
+             'upgrades-section', 'upgrades-container', 'consumables-section', 'consumables-container',
+             'click-effect-container', 'golden-slime-container', 'buff-container', 'main-area'
+            ].forEach(id => els[id] = document.getElementById(id));
+
+            loadGame();
+            renderShop(); // ショップの初期構築
+            
+            requestAnimationFrame(gameLoop);
+            els['giant-slime'].addEventListener('pointerdown', handleSlimeClick);
+            saveInterval = setInterval(saveGame, 30000);
+            setInterval(trySpawnGoldenSlime, 1000);
+        }
+
+        /* --- ゲームロジック --- */
+
+        function handleSlimeClick(e) {
+            game.clicks++;
+            const amount = calculateClickPower();
+            addSlimes(amount);
+
+            // アニメーション & エフェクト
+            triggerSlimeAnim();
+            const rect = els['giant-slime'].getBoundingClientRect();
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : rect.left + rect.width/2);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : rect.top + rect.height/2);
+            spawnFloatingText(`+${beautify(amount)}`, clientX, clientY);
+            spawnParticles(clientX, clientY);
+        }
+
+        function addSlimes(amount) {
+            game.slimes += amount;
+            game.totalSlimes += amount;
+            // UI更新はgameLoopで行うが、即時反映したい場合はここでも呼ぶ
+        }
+
+        // クリック力計算
+        function calculateClickPower() {
+            let power = 1;
+            
+            // 固定値加算
+            if (game.upgrades['glove1']) power += 1;
+            if (game.upgrades['glove2']) power += 5;
+
+            // SpS割合加算
+            if (game.upgrades['clickPercent1']) {
+                power += calculateBaseSpS() * 0.01;
+            }
+
+            // 倍率
+            if (game.upgrades['hardenedFinger']) power *= 2;
+            
+            // バフ
+            if (activeBuffs['clickFrenzy'] && activeBuffs['clickFrenzy'].endTime > Date.now()) {
+                power *= activeBuffs['clickFrenzy'].multiplier;
+            }
+
+            return power;
+        }
+
+        // 生産量計算 (SpS) - バフ込み
+        function calculateSpS() {
+            let sps = calculateBaseSpS();
+            
+            // 全体倍率バフ
+            if (activeBuffs['frenzy'] && activeBuffs['frenzy'].endTime > Date.now()) {
+                sps *= activeBuffs['frenzy'].multiplier;
+            }
+
+            return sps;
+        }
+
+        // 基礎生産量計算 (SpS)
+        function calculateBaseSpS() {
+            let sps = 0;
+            BUILDINGS.forEach(b => {
+                let count = game.buildings[b.id] || 0;
+                let prod = b.baseProd * count;
+                // 個別アップグレード
+                if (b.id === 'ranch' && game.upgrades['blueDye']) prod *= 2;
+                sps += prod;
+            });
+            // 全体アップグレード
+            if (game.upgrades['fakeStone']) sps *= 1.1;
+            return sps;
+        }
+
+        // バフ追加
+        function addBuff(type, durationSec, multiplier) {
+            const now = Date.now();
+            const endTime = now + durationSec * 1000;
+            
+            activeBuffs[type] = { endTime, multiplier };
+            
+            // 視覚効果
+            els['main-area'].classList.add('boost-active');
+            setTimeout(updateBuffUI, 0);
+        }
+
+        /* --- メインループ --- */
+        function gameLoop(timestamp) {
+            const dt = (timestamp - lastTick) / 1000;
+            lastTick = timestamp;
+
+            if (dt > 0) {
+                const sps = calculateSpS();
+                if (sps > 0) addSlimes(sps * dt);
+            }
+
+            checkUnlocks();
+            updateBuffUI(); // バフの残り時間更新
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        /* --- UI更新 --- */
+
+        function updateUI() {
+            els['score-display'].textContent = beautify(Math.floor(game.slimes));
+            els['sps-display'].textContent = beautify(calculateSpS(), 1);
+            
+            updateShopButtons();
+        }
+
+        function updateBuffUI() {
+            const now = Date.now();
+            let hasActiveBuff = false;
+            let html = '';
+
+            for (const [type, buff] of Object.entries(activeBuffs)) {
+                if (buff.endTime > now) {
+                    hasActiveBuff = true;
+                    const remaining = Math.ceil((buff.endTime - now) / 1000);
+                    const label = type === 'frenzy' ? '生産3倍' : 'クリック5倍';
+                    const color = type === 'frenzy' ? 'bg-red-500' : 'bg-blue-500';
+                    html += `<div class="${color} text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">${label}: ${remaining}s</div>`;
+                }
+            }
+
+            els['buff-container'].innerHTML = html;
+
+            if (!hasActiveBuff) {
+                els['main-area'].classList.remove('boost-active');
+            }
+        }
+
+        function beautify(num, decimals = 0) {
+            if (num < 1000) return num.toFixed(decimals);
+            if (num < 1000000) return (num / 1000).toFixed(2) + 'k';
+            if (num < 1000000000) return (num / 1000000).toFixed(3) + 'M';
+            return (num / 1000000000).toFixed(3) + 'B';
+        }
+
+        /* --- ショップ描画 --- */
+
+        function getBuildingCost(id) {
+            const b = BUILDINGS.find(x => x.id === id);
+            return Math.floor(b.baseCost * Math.pow(1.15, game.buildings[id]));
+        }
+
+        function renderShop() {
+            // 消耗品描画 (再購入可能なので常に表示してもいいが、最初は隠すかも？とりあえず常時表示)
+            els['consumables-section'].classList.remove('hidden');
+            els['consumables-container'].innerHTML = '';
+            CONSUMABLES.forEach(item => {
+                const div = document.createElement('div');
+                div.id = `btn-consume-${item.id}`;
+                div.className = "group bg-slate-700 hover:bg-slate-600 p-2 rounded border border-slate-600 cursor-pointer flex items-center justify-between transition-all active:scale-95";
+                div.onclick = () => buyConsumable(item.id);
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-2xl">${item.icon}</div>
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-purple-200">${item.name}</div>
+                            <div class="text-[10px] text-slate-300">${item.desc}</div>
+                        </div>
+                    </div>
+                    <div class="text-right min-w-[60px]">
+                        <div class="text-xs font-bold text-yellow-400" id="cost-consume-${item.id}">${beautify(item.baseCost)}</div>
+                    </div>
+                `;
+                els['consumables-container'].appendChild(div);
+            });
+
+            // 施設描画
+            els['buildings-container'].innerHTML = '';
+            BUILDINGS.forEach(b => {
+                const div = document.createElement('div');
+                div.id = `btn-build-${b.id}`;
+                div.className = "group relative bg-slate-700 hover:bg-slate-600 p-2 rounded cursor-pointer transition-colors select-none border border-slate-600 flex items-center justify-between active:scale-95";
+                div.onclick = () => buyBuilding(b.id);
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-3xl">${b.icon}</div>
+                        <div>
+                            <div class="font-bold text-blue-100 text-sm">${b.name}</div>
+                            <div class="text-[10px] text-slate-400 leading-tight max-w-[150px]">${b.desc}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-bold text-green-400">Cost: <span id="cost-${b.id}">0</span></div>
+                        <div class="text-xl font-bold text-slate-500" id="count-${b.id}">0</div>
+                    </div>
+                `;
+                els['buildings-container'].appendChild(div);
+            });
+        }
+
+        function updateShopButtons() {
+            // 施設
+            BUILDINGS.forEach(b => {
+                const cost = getBuildingCost(b.id);
+                const btn = document.getElementById(`btn-build-${b.id}`);
+                document.getElementById(`cost-${b.id}`).textContent = beautify(cost);
+                document.getElementById(`count-${b.id}`).textContent = game.buildings[b.id];
+
+                if (game.slimes >= cost) {
+                    btn.classList.remove('opacity-50', 'grayscale');
+                } else {
+                    btn.classList.add('opacity-50', 'grayscale');
+                }
+            });
+
+            // 消耗品
+            CONSUMABLES.forEach(item => {
+                const btn = document.getElementById(`btn-consume-${item.id}`);
+                // コストはSpSに応じて変動させるとバランスが良いが、今回は固定
+                if (game.slimes >= item.baseCost) {
+                    btn.classList.remove('opacity-50', 'grayscale');
+                } else {
+                    btn.classList.add('opacity-50', 'grayscale');
+                }
+            });
+
+            // アップグレード（購入可能・不可の見た目）
+            UPGRADES.forEach(u => {
+                if (!game.upgrades[u.id]) {
+                    const btn = document.getElementById(`btn-upgrade-${u.id}`);
+                    if (btn) {
+                        if (game.slimes >= u.cost) {
+                            btn.classList.remove('opacity-50', 'grayscale');
+                            btn.classList.add('hover:bg-blue-900');
+                        } else {
+                            btn.classList.add('opacity-50', 'grayscale');
+                            btn.classList.remove('hover:bg-blue-900');
+                        }
+                    }
+                }
+            });
+        }
+
+        function buyBuilding(id) {
+            const cost = getBuildingCost(id);
+            if (game.slimes >= cost) {
+                game.slimes -= cost;
+                game.buildings[id]++;
+                updateUI();
+            }
+        }
+
+        function buyUpgrade(id) {
+            const u = UPGRADES.find(x => x.id === id);
+            if (game.slimes >= u.cost && !game.upgrades[id]) {
+                game.slimes -= u.cost;
+                game.upgrades[id] = true;
+                
+                // UIから削除
+                const btn = document.getElementById(`btn-upgrade-${id}`);
+                if(btn) btn.remove();
+                
+                // 空なら隠す
+                if (els['upgrades-container'].children.length === 0) {
+                    els['upgrades-section'].classList.add('hidden');
+                }
+                updateUI();
+            }
+        }
+
+        function buyConsumable(id) {
+            const item = CONSUMABLES.find(x => x.id === id);
+            // コスト計算（インフレさせてもいいが今回は固定）
+            const cost = item.baseCost; 
+            
+            if (game.slimes >= cost) {
+                game.slimes -= cost;
+                item.onBuy(game); // 効果発動
+                updateUI();
+            }
+        }
+
+        function checkUnlocks() {
+            let hasVisibleUpgrade = false;
+
+            UPGRADES.forEach(u => {
+                if (!game.upgrades[u.id] && u.condition(game)) {
+                    if (!document.getElementById(`btn-upgrade-${u.id}`)) {
+                        const div = document.createElement('div');
+                        div.id = `btn-upgrade-${u.id}`;
+                        div.className = "bg-slate-800 border border-blue-500 rounded p-2 cursor-pointer flex items-center gap-3 transition-all active:scale-95";
+                        div.onclick = () => buyUpgrade(u.id);
+                        div.innerHTML = `
+                            <div class="text-2xl w-8 text-center">${u.icon}</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-blue-300">${u.name}</div>
+                                <div class="text-[10px] text-slate-300">${u.desc}</div>
+                            </div>
+                            <div class="text-xs font-bold text-yellow-400">${beautify(u.cost)}</div>
+                        `;
+                        els['upgrades-container'].appendChild(div);
+                    }
+                    hasVisibleUpgrade = true;
+                } else if (!game.upgrades[u.id] && document.getElementById(`btn-upgrade-${u.id}`)) {
+                    hasVisibleUpgrade = true;
+                }
+            });
+
+            if (hasVisibleUpgrade) {
+                els['upgrades-section'].classList.remove('hidden');
+            } else {
+                els['upgrades-section'].classList.add('hidden');
+            }
+        }
+
+        /* --- 演出・その他 --- */
+
+        function triggerSlimeAnim() {
+            const s = els['giant-slime'];
+            s.classList.remove('slime-click-anim');
+            void s.offsetWidth;
+            s.classList.add('slime-click-anim');
+        }
+
+        function spawnFloatingText(text, x, y) {
+            const el = document.createElement('div');
+            el.textContent = text;
+            el.className = 'floating-number text-2xl md:text-4xl';
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.transform = `translateX(${(Math.random() - 0.5) * 20}px)`;
+            els['click-effect-container'].appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function spawnParticles(x, y) {
+            for(let i=0; i<5; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle bg-blue-300 w-2 h-2 md:w-3 md:h-3';
+                p.style.left = `${x}px`;
+                p.style.top = `${y}px`;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 50;
+                p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+                p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+                els['click-effect-container'].appendChild(p);
+                setTimeout(() => p.remove(), 800);
+            }
+        }
+
+        function trySpawnGoldenSlime() {
+            if (els['golden-slime-container'].children.length > 0) return;
+            if (Math.random() < 0.01) spawnGoldenSlime();
+        }
+
+        function spawnGoldenSlime() {
+            const gs = document.createElement('div');
+            gs.className = 'golden-slime';
+            const x = Math.random() * (window.innerWidth - 80) + 10;
+            const y = Math.random() * (window.innerHeight - 80) + 10;
+            gs.style.left = `${x}px`;
+            gs.style.top = `${y}px`;
+            gs.onclick = (e) => {
+                e.stopPropagation();
+                const sps = calculateSpS();
+                const bonus = Math.max(sps * 600, 1000 + game.totalSlimes * 0.1);
+                addSlimes(bonus);
+                spawnFloatingText(`+${beautify(bonus)} (LUCKY!)`, x, y);
+                gs.remove();
+            };
+            els['golden-slime-container'].appendChild(gs);
+            setTimeout(() => { if(gs.parentNode) gs.remove(); }, 10000);
+        }
+
+        function saveGame() {
+            game.lastSave = Date.now();
+            localStorage.setItem('slimeClickerSave', JSON.stringify(game));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('slimeClickerSave');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    game = { ...game, ...parsed };
+                    // マージ処理
+                    if(parsed.buildings) game.buildings = { ...game.buildings, ...parsed.buildings };
+                    if(parsed.upgrades) game.upgrades = { ...game.upgrades, ...parsed.upgrades };
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        function hardReset() {
+            if(confirm("本当にデータを消去してリセットしますか？")) {
+                localStorage.removeItem('slimeClickerSave');
+                location.reload();
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
