@@ -3,282 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>スライムクリッカー (Slime Clicker)</title>
+    <title>スライムクリッカー RPG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap');
 
         body {
             font-family: 'M PLUS Rounded 1c', sans-serif;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            background-color: #0f172a;
+            color: #f1f5f9;
         }
 
-        /* アニメーション定義 */
-        @keyframes jelly {
-            0%, 100% { transform: scale(1, 1); }
-            25% { transform: scale(0.9, 1.1); }
-            50% { transform: scale(1.1, 0.9); }
-            75% { transform: scale(0.95, 1.05); }
+        /* 共通アニメーション */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
-
-        .slime-click-anim {
-            animation: click-squish 0.1s ease-out;
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px #3b82f6; }
+            50% { box-shadow: 0 0 20px #60a5fa; }
         }
-
+        .anim-click { animation: click-squish 0.1s ease-out; }
         @keyframes click-squish {
             0% { transform: scale(1); }
             50% { transform: scale(0.9); }
             100% { transform: scale(1); }
         }
-
-        /* 巨大スライム */
-        .giant-slime {
-            width: 200px;
-            height: 180px;
-            background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
-            border-radius: 50% 50% 40% 40%;
-            position: relative;
-            box-shadow: 
-                inset 10px 10px 20px rgba(255,255,255,0.4),
-                inset -10px -20px 20px rgba(0,0,0,0.2),
-                0 15px 30px rgba(37, 99, 235, 0.4);
-            transition: transform 0.1s, filter 0.3s;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        .giant-slime::after {
-            content: '';
+        .damage-text {
             position: absolute;
-            top: 15%;
-            left: 20%;
-            width: 25%;
-            height: 15%;
-            background: rgba(255,255,255,0.7);
-            border-radius: 50%;
-            transform: rotate(-45deg);
-        }
-
-        /* ブースト時の発光エフェクト */
-        .boost-active .giant-slime {
-            filter: drop-shadow(0 0 15px #facc15) brightness(1.1);
-            animation: jelly 0.5s infinite;
-        }
-
-        /* ゴールデンスライム */
-        .golden-slime {
-            position: absolute;
-            width: 60px;
-            height: 50px;
-            background: radial-gradient(circle at 30% 30%, #fde047, #eab308);
-            border-radius: 50% 50% 40% 40%;
-            box-shadow: 0 0 15px #facc15;
-            cursor: pointer;
-            z-index: 100;
-            animation: jelly 2s infinite, float 3s ease-in-out infinite;
-            pointer-events: auto;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        /* ポップアップ数値 */
-        .floating-number {
-            position: absolute;
-            font-weight: bold;
-            color: white;
             pointer-events: none;
-            animation: float-up 1s forwards;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            z-index: 20;
+            animation: float-up 0.8s forwards;
+            font-weight: 900;
+            text-shadow: 0 0 3px black;
+            z-index: 50;
         }
-
         @keyframes float-up {
-            0% { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
         }
 
-        /* パーティクル */
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: particle-anim 0.8s forwards;
+        /* メインスライム */
+        .giant-slime {
+            width: 180px; height: 160px;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
+            border-radius: 50% 50% 45% 45%;
+            position: relative;
+            box-shadow: inset 10px 10px 20px rgba(255,255,255,0.4), 0 10px 20px rgba(37,99,235,0.4);
+            transition: transform 0.1s;
+            cursor: pointer;
+            margin: 0 auto;
+        }
+        .giant-slime::after {
+            content: ''; position: absolute; top: 15%; left: 20%; width: 25%; height: 15%;
+            background: rgba(255,255,255,0.7); border-radius: 50%; transform: rotate(-45deg);
         }
 
-        @keyframes particle-anim {
-            0% { transform: translate(0, 0) scale(1); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        /* 敵キャラ */
+        .enemy-sprite {
+            width: 120px; height: 120px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: relative;
+            transition: filter 0.1s;
         }
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* ガチャ演出 */
+        .card-shine {
+            background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 200%;
+            animation: shine 3s infinite;
+        }
+        @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
         /* スクロールバー */
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+<body class="h-screen w-screen overflow-hidden flex flex-col">
 
-    <!-- 左カラム: メインゲームエリア -->
-    <section id="main-area" class="relative w-full md:w-5/12 h-1/2 md:h-full bg-slate-900 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-700 p-4 z-10">
+    <!-- ヘッダー: リソース表示 -->
+    <header class="bg-slate-800 border-b border-slate-700 p-2 flex justify-between items-center shadow-md z-20 shrink-0 h-16">
+        <div class="flex flex-col">
+            <div class="text-xs text-slate-400 font-bold">Slimes (通貨)</div>
+            <div id="res-slimes" class="text-2xl font-black text-blue-400 tabular-nums">0</div>
+        </div>
+        <div class="flex flex-col items-center">
+            <div class="text-xs text-slate-400 font-bold">SpS (秒間生産)</div>
+            <div id="res-sps" class="text-lg font-bold text-slate-200 tabular-nums">0.0/s</div>
+        </div>
+        <div class="flex flex-col items-end">
+            <div class="text-xs text-slate-400 font-bold">Gems (魔石)</div>
+            <div id="res-gems" class="text-2xl font-black text-purple-400 tabular-nums">0</div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツエリア (タブ切り替え) -->
+    <main class="flex-1 relative overflow-hidden bg-slate-900">
         
-        <!-- バフ表示エリア -->
-        <div id="buff-container" class="absolute top-4 left-4 right-4 flex flex-wrap gap-2 justify-center z-20 pointer-events-none">
-            <!-- JSで生成 -->
-        </div>
+        <!-- エフェクトレイヤー -->
+        <div id="effect-layer" class="absolute inset-0 pointer-events-none z-50 overflow-hidden"></div>
 
-        <!-- 数値表示 -->
-        <div class="text-center mb-8 relative z-10">
-            <div class="text-sm text-slate-400 font-bold uppercase tracking-wider mb-1">Slimes</div>
-            <div id="score-display" class="text-5xl md:text-6xl font-bold text-blue-400 drop-shadow-lg tabular-nums">0</div>
-            <div class="text-slate-400 mt-2 text-lg font-bold tabular-nums flex items-center justify-center gap-2">
-                <span><span id="sps-display">0.0</span> /秒</span>
-            </div>
-        </div>
-
-        <!-- 巨大スライム -->
-        <div class="relative flex items-center justify-center w-full h-64">
-            <div id="giant-slime" class="giant-slime hover:scale-105 active:scale-95 transition-transform">
-                <div class="absolute top-[35%] left-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
-                <div class="absolute top-[35%] right-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
-                <div class="absolute top-[55%] left-[45%] w-[10%] h-[5%] bg-slate-900 rounded-full opacity-50"></div>
-            </div>
-        </div>
-
-        <!-- エフェクトコンテナ -->
-        <div id="click-effect-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-    </section>
-
-    <!-- 右カラム: ショップ -->
-    <section class="w-full md:w-7/12 h-1/2 md:h-full flex flex-col bg-slate-800">
-        <div class="flex bg-slate-800 border-b border-slate-700 shrink-0">
-            <div class="px-6 py-3 text-blue-400 font-bold border-b-2 border-blue-400 bg-slate-800/50">
-                ショップ (Shop)
-            </div>
-        </div>
-
-        <div class="flex-1 overflow-y-auto p-2 md:p-4 space-y-6 custom-scrollbar">
+        <!-- TAB 1: メイン (生産) -->
+        <div id="tab-main" class="tab-content absolute inset-0 flex flex-col items-center justify-center p-4 overflow-y-auto">
             
-            <!-- ポーション・消耗品 -->
-            <div id="consumables-section" class="hidden">
-                <h3 class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <span>🧪 Potions (消耗品)</span>
-                    <span class="text-[10px] text-slate-500">何度でも買えます</span>
-                </h3>
-                <div id="consumables-container" class="grid grid-cols-1 gap-2">
-                    <!-- JSで生成 -->
+            <!-- バフ表示 -->
+            <div id="buff-container" class="absolute top-2 w-full flex justify-center gap-2 pointer-events-none"></div>
+
+            <div class="relative group">
+                <div id="main-slime" class="giant-slime hover:scale-105 active:scale-95 flex items-center justify-center">
+                    <div class="absolute top-[35%] left-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
+                    <div class="absolute top-[35%] right-[25%] w-[10%] h-[10%] bg-slate-900 rounded-full opacity-70"></div>
+                    <div class="absolute top-[60%] left-[45%] w-[10%] h-[5%] bg-slate-900 rounded-full opacity-50"></div>
                 </div>
+                <div class="text-center mt-6 text-slate-400 text-sm animate-pulse">TAP TO FARM</div>
             </div>
 
-            <!-- アップグレード (リスト形式に変更) -->
-            <div id="upgrades-section" class="hidden">
-                <h3 class="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <span>⚡ Upgrades (強化)</span>
-                    <span class="text-[10px] text-slate-500">一度だけの永続効果</span>
-                </h3>
-                <div id="upgrades-container" class="grid grid-cols-1 gap-2">
-                    <!-- JSで生成: リスト形式にして説明文を常時表示 -->
+            <div class="mt-8 w-full max-w-md bg-slate-800/50 rounded p-4 border border-slate-700">
+                <h3 class="text-xs font-bold text-slate-500 mb-2 text-center">STATS</h3>
+                <div class="flex justify-between text-sm border-b border-slate-700 pb-1 mb-1">
+                    <span>転生倍率:</span> <span id="stat-rebirth" class="font-bold text-yellow-400">x1.0</span>
                 </div>
-            </div>
-
-            <!-- 施設リスト -->
-            <div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center px-1">
-                    <span>Buildings (施設)</span>
-                    <span class="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-300">Cost x1.15</span>
-                </h3>
-                <div id="buildings-container" class="space-y-2">
-                    <!-- JSで生成 -->
+                <div class="flex justify-between text-sm">
+                    <span>クリック力:</span> <span id="stat-click" class="font-bold text-green-400">1</span>
                 </div>
-            </div>
-            
-            <div class="pt-8 pb-4 flex justify-between items-center text-xs text-slate-500 border-t border-slate-700 mt-4">
-                <span>Auto-saved locally.</span>
-                <button onclick="hardReset()" class="text-red-500 hover:text-red-400 underline">リセット</button>
             </div>
         </div>
-    </section>
 
-    <div id="golden-slime-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+        <!-- TAB 2: バトル (戦闘) -->
+        <div id="tab-battle" class="tab-content absolute inset-0 hidden flex-col p-4 items-center">
+            <div class="w-full max-w-md flex-1 flex flex-col items-center justify-center">
+                
+                <!-- ステージ情報 -->
+                <div class="text-center mb-4">
+                    <div class="text-yellow-500 font-bold tracking-widest">STAGE <span id="battle-stage">1</span></div>
+                    <div class="text-xs text-slate-400">敵を倒して魔石(Gem)を集めよう！</div>
+                </div>
+
+                <!-- HPバー -->
+                <div class="w-full bg-slate-700 h-6 rounded-full overflow-hidden border border-slate-600 mb-8 relative">
+                    <div id="enemy-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-200" style="width: 100%"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-xs font-bold shadow-black drop-shadow-md">
+                        HP: <span id="enemy-hp-text">100/100</span>
+                    </div>
+                </div>
+
+                <!-- 敵画像 (CSS生成) -->
+                <div id="enemy-container" class="relative cursor-crosshair active:scale-95 transition-transform">
+                    <div id="enemy-visual" class="w-40 h-40 bg-slate-800 rounded-xl flex items-center justify-center text-6xl shadow-2xl border-2 border-red-900/50">
+                        👾
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center space-y-2">
+                    <div class="text-sm font-bold text-slate-300">Party DPS: <span id="battle-dps" class="text-red-400">0</span></div>
+                    <div class="text-xs text-slate-500">画面タップで攻撃！</div>
+                </div>
+                
+                <!-- オート進行トグル -->
+                <div class="mt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="auto-battle-check" class="w-4 h-4 rounded bg-slate-700 border-slate-600 text-blue-600 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2">
+                        <span class="text-sm text-slate-300 select-none">ボス戦後に次へ進む</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: ガチャ & ユニット -->
+        <div id="tab-gacha" class="tab-content absolute inset-0 hidden flex-col overflow-hidden bg-slate-900">
+            <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center shrink-0">
+                <h2 class="font-bold text-purple-400">仲間召喚 (Summon)</h2>
+                <div class="text-xs text-slate-400">通貨を消費して仲間を獲得</div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <!-- ガチャボタンエリア -->
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700 text-center mb-8 shadow-lg">
+                    <div class="mb-4 text-4xl">🔮</div>
+                    <h3 class="text-xl font-bold text-white mb-2">スライム召喚</h3>
+                    <p class="text-xs text-slate-400 mb-4">N:60% R:30% SR:9% SSR:1%</p>
+                    
+                    <button onclick="pullGacha(1)" id="btn-gacha-1" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded shadow-lg transition-all mb-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        1回召喚 (<span id="gacha-cost">100</span> Slimes)
+                    </button>
+                    <div class="text-[10px] text-slate-500 mt-2">※既に持っているキャラは魔石(Gem)に変換されます</div>
+                </div>
+
+                <!-- 所持ユニットリスト -->
+                <h3 class="font-bold text-slate-300 mb-2 flex items-center gap-2">
+                    <span>Party Members</span>
+                    <span class="text-xs font-normal bg-slate-700 px-2 py-1 rounded text-slate-400">魔石でLvUP</span>
+                </h3>
+                <div id="unit-list" class="grid grid-cols-1 gap-2 pb-20">
+                    <!-- JSで生成 -->
+                    <div class="text-center text-slate-500 py-4">まだ仲間がいません</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: ショップ -->
+        <div id="tab-shop" class="tab-content absolute inset-0 hidden flex-col bg-slate-900">
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+                
+                <!-- ポーション -->
+                <div>
+                    <h3 class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">Consumables (消耗品)</h3>
+                    <div id="shop-consumables" class="grid grid-cols-1 gap-2"></div>
+                </div>
+
+                <!-- 施設 -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Buildings (施設)</h3>
+                    <div id="shop-buildings" class="space-y-2"></div>
+                </div>
+
+                <!-- 転生設定 -->
+                <div class="mt-8 p-4 border border-red-900/50 bg-red-900/10 rounded-lg">
+                    <h3 class="font-bold text-red-400 mb-2">Rebirth (転生)</h3>
+                    <p class="text-xs text-red-200/70 mb-4">
+                        スライム、施設、ステージ進行をリセットし、獲得総スライムに応じた「永続倍率」を得て最初から始めます。<br>
+                        ※仲間と魔石、Gachaコストは引き継がれます。
+                    </p>
+                    <div class="text-center mb-2">
+                        <span class="text-xs text-slate-400">現在の獲得ボーナス: </span>
+                        <span id="rebirth-preview" class="font-bold text-yellow-400">+0%</span>
+                    </div>
+                    <button onclick="rebirth()" class="w-full py-2 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded transition-colors font-bold">
+                        転生する
+                    </button>
+                </div>
+
+                <!-- データリセット -->
+                <div class="text-right pt-8">
+                     <button onclick="hardReset()" class="text-xs text-slate-600 underline hover:text-slate-400">全データを完全消去</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- フッターナビゲーション (タブボタン) -->
+    <nav class="bg-slate-800 border-t border-slate-700 h-16 shrink-0 flex justify-around items-center z-50">
+        <button onclick="switchTab('main')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-blue-400 active:bg-slate-700">
+            <span class="text-xl">🏠</span>
+            <span class="text-[10px] font-bold mt-1">メイン</span>
+        </button>
+        <button onclick="switchTab('battle')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+            <span class="text-xl">⚔️</span>
+            <span class="text-[10px] font-bold mt-1">戦闘</span>
+        </button>
+        <button onclick="switchTab('gacha')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+            <span class="text-xl">🔮</span>
+            <span class="text-[10px] font-bold mt-1">ガチャ</span>
+        </button>
+        <button onclick="switchTab('shop')" class="nav-btn flex flex-col items-center justify-center w-full h-full text-slate-400 active:bg-slate-700">
+            <span class="text-xl">🛒</span>
+            <span class="text-[10px] font-bold mt-1">ショップ</span>
+        </button>
+    </nav>
+
+    <!-- ガチャ結果モーダル -->
+    <div id="gacha-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+        <div class="bg-slate-800 p-8 rounded-xl border border-slate-600 max-w-sm w-full text-center card-shine" onclick="event.stopPropagation()">
+            <div id="gacha-result-rarity" class="text-2xl font-black mb-2 text-yellow-400">SSR</div>
+            <div id="gacha-result-icon" class="text-6xl mb-4 animate-bounce">🐉</div>
+            <div id="gacha-result-name" class="text-xl font-bold text-white mb-2">ドラゴン・スライム</div>
+            <div id="gacha-result-desc" class="text-sm text-slate-300 mb-6">攻撃力+50%の強敵！</div>
+            <button onclick="document.getElementById('gacha-modal').classList.add('hidden')" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-500 w-full">OK</button>
+        </div>
+    </div>
 
     <script>
-        /* --- データ定義 --- */
+        /* --- 定数・データ --- */
         const BUILDINGS = [
-            { id: 'stick', name: '木の棒', icon: '🪵', baseCost: 15, baseProd: 0.1, desc: 'つつくと少しスライムが増える。' },
-            { id: 'kid', name: '村の子供', icon: '👦', baseCost: 100, baseProd: 1, desc: 'お小遣いをあげて雇った子供。' },
-            { id: 'ranch', name: 'スライム牧場', icon: '🛖', baseCost: 1100, baseProd: 8, desc: 'スライムを放し飼いにする施設。' },
-            { id: 'flask', name: '錬金術師のフラスコ', icon: '⚗️', baseCost: 12000, baseProd: 47, desc: '科学と魔法の融合。' },
-            { id: 'summon', name: '古代の召喚陣', icon: '🔮', baseCost: 130000, baseProd: 260, desc: '異世界からスライムを呼び出す。' },
-            { id: 'planet', name: 'スライム惑星', icon: '🪐', baseCost: 1400000, baseProd: 1400, desc: '惑星ひとつを丸ごと採掘する。' }
+            { id: 'stick', name: '木の棒', icon: '🪵', baseCost: 15, baseProd: 0.1, desc: 'つつくと少しスライムが増える' },
+            { id: 'kid', name: '村の子供', icon: '👦', baseCost: 100, baseProd: 1, desc: 'お小遣いをあげて雇った子供' },
+            { id: 'ranch', name: 'スライム牧場', icon: '🛖', baseCost: 1100, baseProd: 8, desc: '放し飼い施設。餌は水でOK' },
+            { id: 'flask', name: '錬金フラスコ', icon: '⚗️', baseCost: 12000, baseProd: 47, desc: '科学と魔法の融合' },
+            { id: 'summon', name: '古代の召喚陣', icon: '🔮', baseCost: 130000, baseProd: 260, desc: '異世界から呼び出す' },
+            { id: 'planet', name: 'スライム惑星', icon: '🪐', baseCost: 1400000, baseProd: 1400, desc: '星ごとスライム化' }
         ];
 
-        const UPGRADES = [
-            // クリック強化系
-            { 
-                id: 'glove1', name: '厚手の軍手', icon: '🧤', cost: 500, 
-                desc: 'クリックで得られるスライムが +1 されます。',
-                condition: (g) => g.clicks >= 50,
-                effectType: 'clickAdd', value: 1
-            },
-            { 
-                id: 'glove2', name: 'パワーグローブ', icon: '🥊', cost: 5000, 
-                desc: 'クリックで得られるスライムが +5 されます。',
-                condition: (g) => g.clicks >= 500,
-                effectType: 'clickAdd', value: 5
-            },
-            { 
-                id: 'clickPercent1', name: 'スライムとの絆', icon: '❤️', cost: 50000, 
-                desc: '毎秒生産量の 1% がクリックに追加されます。',
-                condition: (g) => g.totalSlimes >= 10000,
-                effectType: 'clickPercent', value: 0.01
-            },
-            // 生産強化系
-            { 
-                id: 'hardenedFinger', name: '硬い指先', icon: '👆', cost: 2000, 
-                desc: 'クリック効率が 2倍 になります。',
-                condition: (g) => g.clicks >= 200,
-                effectType: 'clickMult', value: 2
-            },
-            { 
-                id: 'blueDye', name: '青い染料', icon: '🎨', cost: 11000, 
-                desc: '「スライム牧場」の生産量が 2倍 になります。',
-                condition: (g) => g.buildings['ranch'] >= 10,
-                effectType: 'buildingMult', target: 'ranch', value: 2
-            },
-            { 
-                id: 'fakeStone', name: '賢者の石（偽）', icon: '💎', cost: 120000, 
-                desc: '全ての施設の生産量が 1.1倍 になります。',
-                condition: (g) => g.buildings['flask'] >= 20,
-                effectType: 'globalMult', value: 1.1
-            }
+        // ユニット定義 (ガチャ)
+        const UNITS = [
+            { id: 'u1', name: 'スライム兵', rarity: 'N', icon: '🗡️', chance: 60, baseDps: 5, baseClick: 2, desc: '剣を持ったスライム' },
+            { id: 'u2', name: 'スライム弓兵', rarity: 'N', icon: '🏹', chance: 60, baseDps: 8, baseClick: 1, desc: '遠くから狙い撃つ' },
+            { id: 'u3', name: 'スライム魔法使い', rarity: 'R', icon: '🧙', chance: 30, baseDps: 25, baseClick: 5, desc: 'ファイアボール！' },
+            { id: 'u4', name: 'スライム騎士', rarity: 'R', icon: '🛡️', chance: 30, baseDps: 15, baseClick: 10, desc: '硬い鎧を着ている' },
+            { id: 'u5', name: 'メカ・スライム', rarity: 'SR', icon: '🤖', chance: 9, baseDps: 80, baseClick: 20, desc: '科学の力だ！' },
+            { id: 'u6', name: 'ドラゴン・スライム', rarity: 'SSR', icon: '🐉', chance: 1, baseDps: 300, baseClick: 100, desc: '最強の生物...かも' }
         ];
 
         const CONSUMABLES = [
             {
                 id: 'redPotion', name: '赤のポーション', icon: '🧪', baseCost: 1000,
-                desc: '30秒間、全生産量が 3倍 になります。',
-                duration: 30,
-                onBuy: (g) => addBuff('frenzy', 30, 3)
-            },
-            {
-                id: 'bluePotion', name: '青のポーション', icon: '💧', baseCost: 5000,
-                desc: '30秒間、クリック力が 5倍 になります。',
-                duration: 30,
-                onBuy: (g) => addBuff('clickFrenzy', 30, 5)
+                desc: '30秒間、生産3倍 (CD:60s)',
+                duration: 30, cooldown: 60,
+                onBuy: () => addBuff('frenzy', 30, 3)
             },
             {
                 id: 'goldPotion', name: '黄のポーション', icon: '✨', baseCost: 10000,
-                desc: '現在の毎秒生産量の 300秒分 を即座に獲得します。',
-                duration: 0,
-                onBuy: (g) => {
-                    const sps = calculateSpS();
-                    const amount = Math.max(sps * 300, 1000);
-                    addSlimes(amount);
-                    spawnFloatingText(`+${beautify(amount)}`, window.innerWidth/2, window.innerHeight/2);
+                desc: '5分分のスライム即ゲット (CD:60s)',
+                duration: 0, cooldown: 60,
+                onBuy: () => {
+                    const gain = Math.max(calculateSpS() * 300, 1000);
+                    addSlimes(gain);
+                    spawnText(`+${beautify(gain)}`, window.innerWidth/2, window.innerHeight/2, 'text-yellow-400');
                 }
             }
         ];
@@ -286,438 +327,578 @@
         /* --- ゲーム状態 --- */
         let game = {
             slimes: 0,
-            totalSlimes: 0,
-            clicks: 0,
+            totalSlimes: 0, // 生涯獲得量（転生計算用）
+            gems: 0,
             buildings: {},
-            upgrades: {},
+            units: {}, // { u1: { level: 1, count: 1 } }
+            gachaCount: 0,
+            rebirthCount: 0,
+            battleStage: 1,
             lastSave: Date.now()
         };
-        
-        // バフ管理（セーブしない一時的なもの）
-        let activeBuffs = {}; // { frenzy: { endTime: 123456789, multiplier: 3 } }
 
-        // 初期化
-        BUILDINGS.forEach(b => { if (game.buildings[b.id] === undefined) game.buildings[b.id] = 0; });
-        UPGRADES.forEach(u => { if (game.upgrades[u.id] === undefined) game.upgrades[u.id] = false; });
+        // 初期化ヘルパー
+        BUILDINGS.forEach(b => { if(game.buildings[b.id] === undefined) game.buildings[b.id] = 0; });
 
-        /* --- システム変数 --- */
+        // 一時状態
         let lastTick = performance.now();
+        let activeBuffs = {};
+        let cooldowns = {}; // { redPotion: endTime }
+        let battle = {
+            hp: 10,
+            maxHp: 10,
+            enemyId: 'slime',
+            auto: false
+        };
         let saveInterval;
-        const els = {}; // DOMキャッシュ
 
-        /* --- 初期化処理 --- */
+        /* --- DOMキャッシュ --- */
+        const $ = (id) => document.getElementById(id);
+        const els = {
+            slimes: $('res-slimes'), sps: $('res-sps'), gems: $('res-gems'),
+            effectLayer: $('effect-layer'),
+            enemyHpBar: $('enemy-hp-bar'), enemyHpText: $('enemy-hp-text'),
+            enemyVisual: $('enemy-visual'), battleStage: $('battle-stage'),
+            battleDps: $('battle-dps'),
+            gachaCost: $('gacha-cost'), unitList: $('unit-list'),
+            shopBuildings: $('shop-buildings'), shopConsumables: $('shop-consumables'),
+            rebirthPreview: $('rebirth-preview'), statRebirth: $('stat-rebirth'), statClick: $('stat-click')
+        };
+
+        /* --- コアロジック --- */
+        
         function init() {
-            // DOM要素取得
-            ['score-display', 'sps-display', 'giant-slime', 'buildings-container', 
-             'upgrades-section', 'upgrades-container', 'consumables-section', 'consumables-container',
-             'click-effect-container', 'golden-slime-container', 'buff-container', 'main-area'
-            ].forEach(id => els[id] = document.getElementById(id));
-
             loadGame();
-            renderShop(); // ショップの初期構築
-            
-            requestAnimationFrame(gameLoop);
-            els['giant-slime'].addEventListener('pointerdown', handleSlimeClick);
-            saveInterval = setInterval(saveGame, 30000);
-            setInterval(trySpawnGoldenSlime, 1000);
-        }
-
-        /* --- ゲームロジック --- */
-
-        function handleSlimeClick(e) {
-            game.clicks++;
-            const amount = calculateClickPower();
-            addSlimes(amount);
-
-            // アニメーション & エフェクト
-            triggerSlimeAnim();
-            const rect = els['giant-slime'].getBoundingClientRect();
-            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : rect.left + rect.width/2);
-            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : rect.top + rect.height/2);
-            spawnFloatingText(`+${beautify(amount)}`, clientX, clientY);
-            spawnParticles(clientX, clientY);
-        }
-
-        function addSlimes(amount) {
-            game.slimes += amount;
-            game.totalSlimes += amount;
-            // UI更新はgameLoopで行うが、即時反映したい場合はここでも呼ぶ
-        }
-
-        // クリック力計算
-        function calculateClickPower() {
-            let power = 1;
-            
-            // 固定値加算
-            if (game.upgrades['glove1']) power += 1;
-            if (game.upgrades['glove2']) power += 5;
-
-            // SpS割合加算
-            if (game.upgrades['clickPercent1']) {
-                power += calculateBaseSpS() * 0.01;
-            }
-
-            // 倍率
-            if (game.upgrades['hardenedFinger']) power *= 2;
-            
-            // バフ
-            if (activeBuffs['clickFrenzy'] && activeBuffs['clickFrenzy'].endTime > Date.now()) {
-                power *= activeBuffs['clickFrenzy'].multiplier;
-            }
-
-            return power;
-        }
-
-        // 生産量計算 (SpS) - バフ込み
-        function calculateSpS() {
-            let sps = calculateBaseSpS();
-            
-            // 全体倍率バフ
-            if (activeBuffs['frenzy'] && activeBuffs['frenzy'].endTime > Date.now()) {
-                sps *= activeBuffs['frenzy'].multiplier;
-            }
-
-            return sps;
-        }
-
-        // 基礎生産量計算 (SpS)
-        function calculateBaseSpS() {
-            let sps = 0;
-            BUILDINGS.forEach(b => {
-                let count = game.buildings[b.id] || 0;
-                let prod = b.baseProd * count;
-                // 個別アップグレード
-                if (b.id === 'ranch' && game.upgrades['blueDye']) prod *= 2;
-                sps += prod;
+            // 初回ユニットデータ整合性チェック
+            UNITS.forEach(u => {
+                if (!game.units[u.id]) game.units[u.id] = { level: 0, count: 0 };
             });
-            // 全体アップグレード
-            if (game.upgrades['fakeStone']) sps *= 1.1;
-            return sps;
+            
+            resetBattle(game.battleStage);
+            renderShop();
+            renderUnitList();
+            updateResources();
+            updateGachaButton();
+
+            // リスナー
+            $('main-slime').addEventListener('pointerdown', (e) => handleMainClick(e));
+            $('enemy-container').addEventListener('pointerdown', (e) => handleEnemyClick(e));
+            $('auto-battle-check').addEventListener('change', (e) => { battle.auto = e.target.checked; });
+
+            // ループ開始
+            requestAnimationFrame(gameLoop);
+            saveInterval = setInterval(saveGame, 30000);
         }
 
-        // バフ追加
-        function addBuff(type, durationSec, multiplier) {
-            const now = Date.now();
-            const endTime = now + durationSec * 1000;
-            
-            activeBuffs[type] = { endTime, multiplier };
-            
-            // 視覚効果
-            els['main-area'].classList.add('boost-active');
-            setTimeout(updateBuffUI, 0);
-        }
-
-        /* --- メインループ --- */
         function gameLoop(timestamp) {
             const dt = (timestamp - lastTick) / 1000;
             lastTick = timestamp;
 
             if (dt > 0) {
+                // 生産 (SpS)
                 const sps = calculateSpS();
                 if (sps > 0) addSlimes(sps * dt);
+
+                // バトル (DPS)
+                if ($('tab-battle').style.display !== 'none') {
+                    const dps = calculatePartyDps();
+                    damageEnemy(dps * dt);
+                    els.battleDps.textContent = beautify(dps);
+                }
             }
 
-            checkUnlocks();
-            updateBuffUI(); // バフの残り時間更新
-            updateUI();
+            updateBuffs();
+            updateCooldowns();
+            updateResources();
+            updateShopButtons();
             
             requestAnimationFrame(gameLoop);
         }
 
-        /* --- UI更新 --- */
+        /* --- 計算系 --- */
 
-        function updateUI() {
-            els['score-display'].textContent = beautify(Math.floor(game.slimes));
-            els['sps-display'].textContent = beautify(calculateSpS(), 1);
+        function getRebirthMultiplier() {
+            // 獲得総スライム量に応じて倍率アップ (例: 1Mごとに+10%みたいな雑な計算ではなく、対数などを使う)
+            // ここでは簡易的に (totalSlimes / 10000) ^ 0.5 * 0.1 + 1
+            if (game.totalSlimes < 1000) return 1;
+            return 1 + Math.sqrt(game.totalSlimes / 1000) * 0.1;
+        }
+
+        function calculateSpS() {
+            let sps = 0;
+            BUILDINGS.forEach(b => {
+                sps += b.baseProd * (game.buildings[b.id] || 0);
+            });
+            // バフ適用
+            if (activeBuffs['frenzy']) sps *= activeBuffs['frenzy'].val;
+            // 転生倍率
+            sps *= getRebirthMultiplier();
             
-            updateShopButtons();
+            return sps;
         }
 
-        function updateBuffUI() {
-            const now = Date.now();
-            let hasActiveBuff = false;
-            let html = '';
-
-            for (const [type, buff] of Object.entries(activeBuffs)) {
-                if (buff.endTime > now) {
-                    hasActiveBuff = true;
-                    const remaining = Math.ceil((buff.endTime - now) / 1000);
-                    const label = type === 'frenzy' ? '生産3倍' : 'クリック5倍';
-                    const color = type === 'frenzy' ? 'bg-red-500' : 'bg-blue-500';
-                    html += `<div class="${color} text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">${label}: ${remaining}s</div>`;
+        function calculateClickPower() {
+            let power = 1;
+            // ユニットボーナス
+            UNITS.forEach(u => {
+                const data = game.units[u.id];
+                if (data && data.count > 0) {
+                    power += u.baseClick * data.level * data.count; // 所持数も影響
                 }
+            });
+            // 転生倍率
+            power *= getRebirthMultiplier();
+            return Math.max(1, power);
+        }
+
+        function calculatePartyDps() {
+            let dps = 0;
+            UNITS.forEach(u => {
+                const data = game.units[u.id];
+                if (data && data.count > 0) {
+                    dps += u.baseDps * data.level * data.count;
+                }
+            });
+            return dps; // バトルDPSは転生倍率の影響を受けない（バランス調整）または受けても良い
+        }
+
+        function addSlimes(amount) {
+            game.slimes += amount;
+            game.totalSlimes += amount;
+        }
+
+        /* --- バトルシステム --- */
+
+        function resetBattle(stage) {
+            game.battleStage = stage;
+            // HP計算: 指数関数的に増える
+            battle.maxHp = Math.floor(50 * Math.pow(1.5, stage - 1));
+            battle.hp = battle.maxHp;
+            
+            // 敵の見た目ランダム
+            const emojis = ['👾', '👻', '💀', '👹', '👽', '🤖', '🦖'];
+            els.enemyVisual.textContent = emojis[(stage - 1) % emojis.length];
+            
+            updateEnemyUI();
+        }
+
+        function handleEnemyClick(e) {
+            const dmg = calculateClickPower(); // バトルでもクリック力を使用
+            damageEnemy(dmg);
+            
+            // エフェクト
+            spawnText(`-${beautify(dmg)}`, e.clientX, e.clientY, 'text-red-500', true);
+            els.enemyVisual.classList.remove('shake');
+            void els.enemyVisual.offsetWidth;
+            els.enemyVisual.classList.add('shake');
+        }
+
+        function damageEnemy(amount) {
+            if (battle.hp <= 0) return;
+            
+            battle.hp -= amount;
+            if (battle.hp <= 0) {
+                battle.hp = 0;
+                winBattle();
+            }
+            updateEnemyUI();
+        }
+
+        function winBattle() {
+            // 報酬: 魔石(Gem) + スライム
+            const gemDrop = Math.floor(Math.random() * 2) + 1 + Math.floor(game.battleStage / 5);
+            const slimeDrop = calculateSpS() * 10 + (game.battleStage * 100);
+            
+            game.gems += gemDrop;
+            addSlimes(slimeDrop);
+            
+            spawnText(`Victory! +${gemDrop} Gems`, window.innerWidth/2, window.innerHeight/3, 'text-purple-400 text-2xl');
+
+            // 次のステージへ
+            setTimeout(() => {
+                if (battle.auto) {
+                    resetBattle(game.battleStage + 1);
+                } else {
+                    // そのまま復活（ファーミング用）
+                    resetBattle(game.battleStage); 
+                }
+            }, 500);
+        }
+
+        function updateEnemyUI() {
+            const pct = (battle.hp / battle.maxHp) * 100;
+            els.enemyHpBar.style.width = `${pct}%`;
+            els.enemyHpText.textContent = `${beautify(Math.ceil(battle.hp))}/${beautify(battle.maxHp)}`;
+            els.battleStage.textContent = game.battleStage;
+        }
+
+        /* --- ガチャ & ユニット --- */
+
+        function getGachaCost() {
+            // 回数に応じてコスト上昇
+            return Math.floor(100 * Math.pow(1.1, game.gachaCount));
+        }
+
+        function pullGacha(times) {
+            const cost = getGachaCost();
+            if (game.slimes < cost) return;
+
+            game.slimes -= cost;
+            game.gachaCount += times;
+            
+            // 抽選ロジック
+            let resultUnit = null;
+            let isNew = false;
+            let bonusGem = 0;
+
+            const rand = Math.random() * 100;
+            let cumulative = 0;
+            
+            // SSRから順に判定
+            const sortedUnits = [...UNITS].sort((a,b) => a.chance - b.chance); // 小さい順(SSR..)だと加算ロジックが面倒なので、逆にするか、合計100前提でやる
+            
+            // シンプルに: N, R, SR, SSRの区分を作る
+            let rarity = 'N';
+            if (rand < 1) rarity = 'SSR';
+            else if (rand < 10) rarity = 'SR';
+            else if (rand < 40) rarity = 'R';
+
+            // そのレアリティの中からランダム選出
+            const pool = UNITS.filter(u => u.rarity === rarity);
+            resultUnit = pool[Math.floor(Math.random() * pool.length)];
+
+            // 獲得処理
+            if (game.units[resultUnit.id].count === 0) {
+                game.units[resultUnit.id].count = 1;
+                game.units[resultUnit.id].level = 1;
+                isNew = true;
+            } else {
+                // 重複時は魔石に変換 + 重ねて強化(count up)
+                game.units[resultUnit.id].count++;
+                bonusGem = (rarity === 'SSR' ? 10 : rarity === 'SR' ? 5 : rarity === 'R' ? 2 : 1);
+                game.gems += bonusGem;
             }
 
-            els['buff-container'].innerHTML = html;
+            // 演出
+            showGachaResult(resultUnit, isNew, bonusGem);
+            updateGachaButton();
+            renderUnitList();
+        }
 
-            if (!hasActiveBuff) {
-                els['main-area'].classList.remove('boost-active');
+        function showGachaResult(unit, isNew, bonusGem) {
+            $('gacha-result-rarity').textContent = unit.rarity;
+            $('gacha-result-rarity').className = `text-2xl font-black mb-2 ${getRarityColor(unit.rarity)}`;
+            $('gacha-result-icon').textContent = unit.icon;
+            $('gacha-result-name').textContent = unit.name;
+            $('gacha-result-desc').textContent = isNew ? "NEW JOIN!" : `既に仲間です。魔石+${bonusGem}`;
+            $('gacha-modal').classList.remove('hidden');
+        }
+
+        function upgradeUnit(id) {
+            const u = game.units[id];
+            const cost = u.level * 5; // 魔石コスト
+            if (game.gems >= cost) {
+                game.gems -= cost;
+                u.level++;
+                renderUnitList();
             }
         }
 
-        function beautify(num, decimals = 0) {
-            if (num < 1000) return num.toFixed(decimals);
-            if (num < 1000000) return (num / 1000).toFixed(2) + 'k';
-            if (num < 1000000000) return (num / 1000000).toFixed(3) + 'M';
-            return (num / 1000000000).toFixed(3) + 'B';
+        /* --- UI更新全般 --- */
+
+        function updateResources() {
+            els.slimes.textContent = beautify(Math.floor(game.slimes));
+            els.sps.textContent = beautify(calculateSpS(), 1) + "/s";
+            els.gems.textContent = game.gems;
+            
+            // 統計
+            els.statRebirth.textContent = `x${beautify(getRebirthMultiplier(), 2)}`;
+            els.statClick.textContent = beautify(calculateClickPower());
         }
 
-        /* --- ショップ描画 --- */
-
-        function getBuildingCost(id) {
-            const b = BUILDINGS.find(x => x.id === id);
-            return Math.floor(b.baseCost * Math.pow(1.15, game.buildings[id]));
+        function updateGachaButton() {
+            const cost = getGachaCost();
+            els.gachaCost.textContent = beautify(cost);
+            const btn = $('btn-gacha-1');
+            btn.disabled = game.slimes < cost;
+            btn.classList.toggle('opacity-50', game.slimes < cost);
         }
 
-        function renderShop() {
-            // 消耗品描画 (再購入可能なので常に表示してもいいが、最初は隠すかも？とりあえず常時表示)
-            els['consumables-section'].classList.remove('hidden');
-            els['consumables-container'].innerHTML = '';
-            CONSUMABLES.forEach(item => {
-                const div = document.createElement('div');
-                div.id = `btn-consume-${item.id}`;
-                div.className = "group bg-slate-700 hover:bg-slate-600 p-2 rounded border border-slate-600 cursor-pointer flex items-center justify-between transition-all active:scale-95";
-                div.onclick = () => buyConsumable(item.id);
-                div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="text-2xl">${item.icon}</div>
+        function renderUnitList() {
+            els.unitList.innerHTML = '';
+            let hasUnit = false;
+
+            // 所持ユニットを表示
+            UNITS.forEach(u => {
+                const data = game.units[u.id];
+                if (data && data.count > 0) {
+                    hasUnit = true;
+                    const div = document.createElement('div');
+                    const cost = data.level * 5;
+                    div.className = "bg-slate-800 border border-slate-700 p-3 rounded flex items-center gap-3";
+                    div.innerHTML = `
+                        <div class="text-3xl">${u.icon}</div>
                         <div class="flex-1">
-                            <div class="text-sm font-bold text-purple-200">${item.name}</div>
-                            <div class="text-[10px] text-slate-300">${item.desc}</div>
+                            <div class="flex justify-between items-center">
+                                <div class="font-bold text-slate-200">${u.name} <span class="text-xs ${getRarityColor(u.rarity)}">[${u.rarity}]</span></div>
+                                <div class="text-xs text-slate-400">Lv.${data.level} (x${data.count})</div>
+                            </div>
+                            <div class="text-[10px] text-slate-400">DPS: ${beautify(u.baseDps * data.level * data.count)} | Click: ${beautify(u.baseClick * data.level * data.count)}</div>
                         </div>
-                    </div>
-                    <div class="text-right min-w-[60px]">
-                        <div class="text-xs font-bold text-yellow-400" id="cost-consume-${item.id}">${beautify(item.baseCost)}</div>
-                    </div>
-                `;
-                els['consumables-container'].appendChild(div);
+                        <button onclick="upgradeUnit('${u.id}')" class="bg-purple-600 text-xs text-white px-3 py-2 rounded hover:bg-purple-500 disabled:opacity-50" ${game.gems < cost ? 'disabled' : ''}>
+                            UP (${cost} Gem)
+                        </button>
+                    `;
+                    els.unitList.appendChild(div);
+                }
             });
 
-            // 施設描画
-            els['buildings-container'].innerHTML = '';
+            if (!hasUnit) els.unitList.innerHTML = '<div class="text-center text-slate-500 py-4">まだ仲間がいません</div>';
+        }
+
+        function getRarityColor(r) {
+            if(r === 'SSR') return 'text-yellow-400';
+            if(r === 'SR') return 'text-red-400';
+            if(r === 'R') return 'text-blue-400';
+            return 'text-slate-400';
+        }
+
+        /* --- インタラクション --- */
+
+        function handleMainClick(e) {
+            const amount = calculateClickPower();
+            addSlimes(amount);
+            
+            // アニメーション
+            const s = $('main-slime');
+            s.classList.remove('anim-click');
+            void s.offsetWidth;
+            s.classList.add('anim-click');
+
+            spawnText(`+${beautify(amount)}`, e.clientX, e.clientY);
+        }
+
+        function spawnText(text, x, y, colorClass = 'text-white', isDamage = false) {
+            const el = document.createElement('div');
+            el.textContent = text;
+            el.className = `damage-text text-2xl ${colorClass}`;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            
+            // ゆらぎ
+            const rx = (Math.random() - 0.5) * 30;
+            el.style.transform = `translateX(${rx}px)`;
+
+            els.effectLayer.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        /* --- ショップ & 転生 --- */
+
+        function renderShop() {
+            // 消耗品
+            els.shopConsumables.innerHTML = '';
+            CONSUMABLES.forEach(item => {
+                const div = document.createElement('div');
+                div.id = `btn-item-${item.id}`;
+                div.className = "bg-slate-800 p-2 rounded border border-slate-700 cursor-pointer flex justify-between items-center group active:scale-95 transition-all relative overflow-hidden";
+                div.onclick = () => buyConsumable(item.id);
+                div.innerHTML = `
+                    <div class="flex items-center gap-3 z-10">
+                        <div class="text-2xl">${item.icon}</div>
+                        <div>
+                            <div class="text-sm font-bold text-purple-200">${item.name}</div>
+                            <div class="text-[10px] text-slate-400">${item.desc}</div>
+                        </div>
+                    </div>
+                    <div class="text-right z-10">
+                        <div class="text-xs font-bold text-yellow-400">${beautify(item.baseCost)}</div>
+                    </div>
+                    <div id="cd-overlay-${item.id}" class="absolute inset-0 bg-black/60 z-20 flex items-center justify-center text-white font-bold hidden"></div>
+                `;
+                els.shopConsumables.appendChild(div);
+            });
+
+            // 施設
+            els.shopBuildings.innerHTML = '';
             BUILDINGS.forEach(b => {
                 const div = document.createElement('div');
                 div.id = `btn-build-${b.id}`;
-                div.className = "group relative bg-slate-700 hover:bg-slate-600 p-2 rounded cursor-pointer transition-colors select-none border border-slate-600 flex items-center justify-between active:scale-95";
+                div.className = "bg-slate-800 p-2 rounded border border-slate-700 cursor-pointer flex justify-between items-center active:scale-95 transition-all";
                 div.onclick = () => buyBuilding(b.id);
-
                 div.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="text-3xl">${b.icon}</div>
+                        <div class="text-2xl">${b.icon}</div>
                         <div>
-                            <div class="font-bold text-blue-100 text-sm">${b.name}</div>
-                            <div class="text-[10px] text-slate-400 leading-tight max-w-[150px]">${b.desc}</div>
+                            <div class="font-bold text-blue-100 text-xs">${b.name}</div>
+                            <div class="text-[10px] text-slate-400">+${beautify(b.baseProd)}/s</div>
                         </div>
                     </div>
                     <div class="text-right">
                         <div class="text-xs font-bold text-green-400">Cost: <span id="cost-${b.id}">0</span></div>
-                        <div class="text-xl font-bold text-slate-500" id="count-${b.id}">0</div>
+                        <div class="text-lg font-bold text-slate-500" id="count-${b.id}">0</div>
                     </div>
                 `;
-                els['buildings-container'].appendChild(div);
+                els.shopBuildings.appendChild(div);
             });
         }
 
         function updateShopButtons() {
             // 施設
             BUILDINGS.forEach(b => {
-                const cost = getBuildingCost(b.id);
-                const btn = document.getElementById(`btn-build-${b.id}`);
-                document.getElementById(`cost-${b.id}`).textContent = beautify(cost);
-                document.getElementById(`count-${b.id}`).textContent = game.buildings[b.id];
-
-                if (game.slimes >= cost) {
-                    btn.classList.remove('opacity-50', 'grayscale');
-                } else {
-                    btn.classList.add('opacity-50', 'grayscale');
-                }
+                const cost = Math.floor(b.baseCost * Math.pow(1.15, game.buildings[b.id]));
+                $(`cost-${b.id}`).textContent = beautify(cost);
+                $(`count-${b.id}`).textContent = game.buildings[b.id];
+                const btn = $(`btn-build-${b.id}`);
+                btn.classList.toggle('opacity-50', game.slimes < cost);
             });
 
-            // 消耗品
+            // 消耗品 (CDとコスト)
             CONSUMABLES.forEach(item => {
-                const btn = document.getElementById(`btn-consume-${item.id}`);
-                // コストはSpSに応じて変動させるとバランスが良いが、今回は固定
-                if (game.slimes >= item.baseCost) {
-                    btn.classList.remove('opacity-50', 'grayscale');
+                const btn = $(`btn-item-${item.id}`);
+                const overlay = $(`cd-overlay-${item.id}`);
+                const now = Date.now();
+                
+                // CDチェック
+                if (cooldowns[item.id] && cooldowns[item.id] > now) {
+                    overlay.classList.remove('hidden');
+                    const left = Math.ceil((cooldowns[item.id] - now) / 1000);
+                    overlay.textContent = left + "s";
+                    btn.style.pointerEvents = 'none';
                 } else {
-                    btn.classList.add('opacity-50', 'grayscale');
+                    overlay.classList.add('hidden');
+                    btn.style.pointerEvents = 'auto';
+                    btn.classList.toggle('opacity-50', game.slimes < item.baseCost);
                 }
             });
 
-            // アップグレード（購入可能・不可の見た目）
-            UPGRADES.forEach(u => {
-                if (!game.upgrades[u.id]) {
-                    const btn = document.getElementById(`btn-upgrade-${u.id}`);
-                    if (btn) {
-                        if (game.slimes >= u.cost) {
-                            btn.classList.remove('opacity-50', 'grayscale');
-                            btn.classList.add('hover:bg-blue-900');
-                        } else {
-                            btn.classList.add('opacity-50', 'grayscale');
-                            btn.classList.remove('hover:bg-blue-900');
-                        }
-                    }
-                }
-            });
+            // 転生プレビュー
+            const multi = getRebirthMultiplier();
+            els.rebirthPreview.textContent = `x${beautify(multi, 2)}`;
         }
 
         function buyBuilding(id) {
-            const cost = getBuildingCost(id);
+            const b = BUILDINGS.find(x => x.id === id);
+            const cost = Math.floor(b.baseCost * Math.pow(1.15, game.buildings[id]));
             if (game.slimes >= cost) {
                 game.slimes -= cost;
                 game.buildings[id]++;
-                updateUI();
-            }
-        }
-
-        function buyUpgrade(id) {
-            const u = UPGRADES.find(x => x.id === id);
-            if (game.slimes >= u.cost && !game.upgrades[id]) {
-                game.slimes -= u.cost;
-                game.upgrades[id] = true;
-                
-                // UIから削除
-                const btn = document.getElementById(`btn-upgrade-${id}`);
-                if(btn) btn.remove();
-                
-                // 空なら隠す
-                if (els['upgrades-container'].children.length === 0) {
-                    els['upgrades-section'].classList.add('hidden');
-                }
-                updateUI();
             }
         }
 
         function buyConsumable(id) {
             const item = CONSUMABLES.find(x => x.id === id);
-            // コスト計算（インフレさせてもいいが今回は固定）
-            const cost = item.baseCost; 
-            
-            if (game.slimes >= cost) {
-                game.slimes -= cost;
-                item.onBuy(game); // 効果発動
-                updateUI();
+            if (game.slimes >= item.baseCost) {
+                game.slimes -= item.baseCost;
+                item.onBuy();
+                // クールダウンセット
+                if (item.cooldown) {
+                    cooldowns[item.id] = Date.now() + item.cooldown * 1000;
+                }
+                updateShopButtons();
             }
         }
 
-        function checkUnlocks() {
-            let hasVisibleUpgrade = false;
+        function rebirth() {
+            if (!confirm("転生しますか？\nスライムと施設はリセットされますが、仲間と魔石は引き継がれます。\n獲得総スライム数に応じて生産倍率が上がります。")) return;
+            
+            // リセット処理
+            game.slimes = 0;
+            BUILDINGS.forEach(b => game.buildings[b.id] = 0);
+            game.battleStage = 1;
+            game.rebirthCount++;
+            
+            saveGame();
+            location.reload(); // 簡易リロード
+        }
 
-            UPGRADES.forEach(u => {
-                if (!game.upgrades[u.id] && u.condition(game)) {
-                    if (!document.getElementById(`btn-upgrade-${u.id}`)) {
-                        const div = document.createElement('div');
-                        div.id = `btn-upgrade-${u.id}`;
-                        div.className = "bg-slate-800 border border-blue-500 rounded p-2 cursor-pointer flex items-center gap-3 transition-all active:scale-95";
-                        div.onclick = () => buyUpgrade(u.id);
-                        div.innerHTML = `
-                            <div class="text-2xl w-8 text-center">${u.icon}</div>
-                            <div class="flex-1">
-                                <div class="text-sm font-bold text-blue-300">${u.name}</div>
-                                <div class="text-[10px] text-slate-300">${u.desc}</div>
-                            </div>
-                            <div class="text-xs font-bold text-yellow-400">${beautify(u.cost)}</div>
-                        `;
-                        els['upgrades-container'].appendChild(div);
-                    }
-                    hasVisibleUpgrade = true;
-                } else if (!game.upgrades[u.id] && document.getElementById(`btn-upgrade-${u.id}`)) {
-                    hasVisibleUpgrade = true;
+        /* --- システム --- */
+
+        function addBuff(type, duration, val) {
+            const now = Date.now();
+            activeBuffs[type] = { end: now + duration * 1000, val: val };
+        }
+
+        function updateBuffs() {
+            const now = Date.now();
+            const container = $('buff-container');
+            container.innerHTML = '';
+            
+            Object.keys(activeBuffs).forEach(k => {
+                if (activeBuffs[k].end > now) {
+                    const left = Math.ceil((activeBuffs[k].end - now) / 1000);
+                    const div = document.createElement('div');
+                    div.className = "bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded animate-pulse";
+                    div.textContent = `BOOST: ${left}s`;
+                    container.appendChild(div);
                 }
             });
-
-            if (hasVisibleUpgrade) {
-                els['upgrades-section'].classList.remove('hidden');
-            } else {
-                els['upgrades-section'].classList.add('hidden');
-            }
+        }
+        
+        function updateCooldowns() {
+            // ShopUI更新でやるのでここは空でもOKだが将来拡張用
         }
 
-        /* --- 演出・その他 --- */
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); // hiddenクラス操作だとflexが壊れることがあるためstyle操作
+            
+            const target = $(`tab-${tabName}`);
+            if (tabName === 'main' || tabName === 'battle') target.style.display = 'flex'; // Main/Battleはflex
+            else target.style.display = 'flex'; 
 
-        function triggerSlimeAnim() {
-            const s = els['giant-slime'];
-            s.classList.remove('slime-click-anim');
-            void s.offsetWidth;
-            s.classList.add('slime-click-anim');
+            target.classList.remove('hidden'); // hiddenクラスも一応取る
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.add('text-slate-400'));
+            
+            // 対象ボタンを青くする(簡易実装)
+            event.currentTarget.classList.add('text-blue-400');
+            event.currentTarget.classList.remove('text-slate-400');
         }
 
-        function spawnFloatingText(text, x, y) {
-            const el = document.createElement('div');
-            el.textContent = text;
-            el.className = 'floating-number text-2xl md:text-4xl';
-            el.style.left = `${x}px`;
-            el.style.top = `${y}px`;
-            el.style.transform = `translateX(${(Math.random() - 0.5) * 20}px)`;
-            els['click-effect-container'].appendChild(el);
-            setTimeout(() => el.remove(), 1000);
-        }
-
-        function spawnParticles(x, y) {
-            for(let i=0; i<5; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle bg-blue-300 w-2 h-2 md:w-3 md:h-3';
-                p.style.left = `${x}px`;
-                p.style.top = `${y}px`;
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 50 + Math.random() * 50;
-                p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
-                p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
-                els['click-effect-container'].appendChild(p);
-                setTimeout(() => p.remove(), 800);
-            }
-        }
-
-        function trySpawnGoldenSlime() {
-            if (els['golden-slime-container'].children.length > 0) return;
-            if (Math.random() < 0.01) spawnGoldenSlime();
-        }
-
-        function spawnGoldenSlime() {
-            const gs = document.createElement('div');
-            gs.className = 'golden-slime';
-            const x = Math.random() * (window.innerWidth - 80) + 10;
-            const y = Math.random() * (window.innerHeight - 80) + 10;
-            gs.style.left = `${x}px`;
-            gs.style.top = `${y}px`;
-            gs.onclick = (e) => {
-                e.stopPropagation();
-                const sps = calculateSpS();
-                const bonus = Math.max(sps * 600, 1000 + game.totalSlimes * 0.1);
-                addSlimes(bonus);
-                spawnFloatingText(`+${beautify(bonus)} (LUCKY!)`, x, y);
-                gs.remove();
-            };
-            els['golden-slime-container'].appendChild(gs);
-            setTimeout(() => { if(gs.parentNode) gs.remove(); }, 10000);
+        /* --- ユーティリティ --- */
+        function beautify(num, d=0) {
+            if (num < 1000) return Math.floor(num * 10)/10; // 小数点ちらつき防止
+            const units = ['k', 'M', 'B', 'T', 'Qa'];
+            const order = Math.floor(Math.log10(num) / 3);
+            if (order >= units.length + 1) return 'INF';
+            return (num / Math.pow(1000, order)).toFixed(2) + units[order - 1];
         }
 
         function saveGame() {
             game.lastSave = Date.now();
-            localStorage.setItem('slimeClickerSave', JSON.stringify(game));
+            localStorage.setItem('slimeClickerRPG_v1', JSON.stringify(game));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('slimeClickerSave');
+            const saved = localStorage.getItem('slimeClickerRPG_v1');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
                     game = { ...game, ...parsed };
-                    // マージ処理
-                    if(parsed.buildings) game.buildings = { ...game.buildings, ...parsed.buildings };
-                    if(parsed.upgrades) game.upgrades = { ...game.upgrades, ...parsed.upgrades };
-                } catch(e) { console.error(e); }
+                    // オフライン進行 (簡易)
+                    const now = Date.now();
+                    const diff = (now - game.lastSave) / 1000;
+                    if (diff > 60) {
+                        const gain = calculateSpS() * diff * 0.5; // 50%効率
+                        if(gain > 0) {
+                            addSlimes(gain);
+                            alert(`おかえりなさい！\n留守中に ${beautify(gain)} スライム稼ぎました。`);
+                        }
+                    }
+                } catch (e) { console.error(e); }
             }
         }
 
         function hardReset() {
-            if(confirm("本当にデータを消去してリセットしますか？")) {
-                localStorage.removeItem('slimeClickerSave');
+            if(confirm("本当に全データを削除しますか？復元できません。")) {
+                localStorage.removeItem('slimeClickerRPG_v1');
                 location.reload();
             }
         }
 
         window.onload = init;
+
     </script>
 </body>
 </html>
